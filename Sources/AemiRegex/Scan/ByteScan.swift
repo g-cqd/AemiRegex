@@ -11,6 +11,10 @@ enum ByteScan {
     /// The maximum set size `firstIndex(ofAny:…)` handles; a larger set costs more compares than a table lookup per byte.
     static let maxSetSize = 8
 
+    /// The most pairs ``firstIndex(ofAnyPair:in:from:)`` handles: each costs two compares per 16 bytes, so past this a DFA step per
+    /// byte is cheaper.
+    static let maxPairCount = 16
+
     private static let weights = SIMD16<UInt8>(1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128)
 
     /// The first index `>= from` whose byte is `byte`, or `nil`.
@@ -61,6 +65,40 @@ enum ByteScan {
         }
         while i < count {
             if set.contains(unsafe base[i]) { return i }
+            i += 1
+        }
+        return nil
+    }
+
+    /// The first index `i >= from` where `(bytes[i], bytes[i + 1])` is one of `pairs`, or `nil`. `pairs` holds at most
+    /// ``maxPairCount`` entries.
+    static func firstIndex(ofAnyPair pairs: [BytePair], in bytes: UnsafeBufferPointer<UInt8>, from: Int) -> Int? {
+        precondition(pairs.count <= maxPairCount, "more than \(maxPairCount) pairs cost more than a DFA step per byte")
+        let firsts = pairs.map { SIMD16<UInt8>(repeating: $0.first) }
+        let seconds = pairs.map { SIMD16<UInt8>(repeating: $0.second) }
+        return unsafe firstIndex(ofAnyPairNeedles: firsts, seconds, pairs: pairs, in: bytes, from: from)
+    }
+
+    /// The scan behind ``firstIndex(ofAnyPair:in:from:)``; `firsts` and `seconds` are the broadcast bytes of `pairs`.
+    static func firstIndex(
+        ofAnyPairNeedles firsts: [SIMD16<UInt8>], _ seconds: [SIMD16<UInt8>], pairs: [BytePair],
+        in bytes: UnsafeBufferPointer<UInt8>, from: Int
+    ) -> Int? {
+        guard from >= 0, from <= bytes.count, let base = bytes.baseAddress, !pairs.isEmpty else { return nil }
+        let count = bytes.count
+        var i = from
+        while i + 17 <= count {
+            let current = unsafe load(base, i)
+            let following = unsafe load(base, i + 1)
+            let hit = (1 ..< pairs.count)
+                .reduce((current .== firsts[0]) .& (following .== seconds[0])) {
+                    $0 .| ((current .== firsts[$1]) .& (following .== seconds[$1]))
+                }
+            if any(hit) { return i + firstSet(hit) }
+            i += 16
+        }
+        while i + 1 < count {
+            if pairs.contains(BytePair(unsafe base[i], unsafe base[i + 1])) { return i }
             i += 1
         }
         return nil

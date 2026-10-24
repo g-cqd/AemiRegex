@@ -53,4 +53,27 @@ struct Closure {
         }
         return literal
     }
+
+    /// Every two-byte prefix a match can have, ascending, or `nil` when there are more than `limit`, or when some match can be
+    /// shorter than two bytes (then no pair is guaranteed to be present).
+    mutating func leadingPairs(limit: Int) -> [BytePair]? {
+        let first = consumers(from: 0)
+        guard !first.reachesMatch, first.pcs.count <= limit else { return nil }
+        var pairs = Set<BytePair>()
+        for firstPC in first.pcs {
+            var firstBytes = ByteSet()
+            add(firstPC, to: &firstBytes)
+            let following = consumers(from: firstPC + 1)
+            guard !following.reachesMatch else { return nil }
+            var secondBytes = ByteSet()
+            for secondPC in following.pcs { add(secondPC, to: &secondBytes) }
+            for a in firstBytes.members {
+                for b in secondBytes.members {
+                    pairs.insert(BytePair(a, b))
+                    if pairs.count > limit { return nil }
+                }
+            }
+        }
+        return pairs.isEmpty ? nil : pairs.sorted()
+    }
 }
