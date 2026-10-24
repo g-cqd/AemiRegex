@@ -8,3 +8,4 @@ DerivedData/
 /.benchmarkBaselines/
 _site/
 .DS_Store
+Package.resolved

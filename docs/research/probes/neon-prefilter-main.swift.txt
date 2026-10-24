@@ -1,0 +1,70 @@
+import Foundation
+@_silgen_name("count_shrn") func count_shrn(_ p: UnsafePointer<UInt8>, _ n: Int, _ b: UInt8) -> Int
+@_silgen_name("count_shrn64") func count_shrn64(_ p: UnsafePointer<UInt8>, _ n: Int, _ b: UInt8) -> Int
+
+func med(_ runs: Int = 9, _ f: () -> Int) -> (Double, Int) {
+    var ts: [Double] = []; var r = 0
+    for _ in 0 ..< runs { let s = DispatchTime.now().uptimeNanoseconds; r = f(); ts.append(Double(DispatchTime.now().uptimeNanoseconds - s) / 1e6) }
+    ts.sort(); return (ts[ts.count / 2], r)
+}
+var corpus = Data()
+for root in [CommandLine.arguments[1]] {
+    for case let p as String in FileManager.default.enumerator(atPath: root)! where p.hasSuffix(".swift") {
+        if let d = try? Data(contentsOf: URL(filePath: root + "/" + p)) { corpus.append(d) }
+    }
+}
+let target = 128 << 20
+var big = [UInt8](); big.reserveCapacity(target + corpus.count)
+while big.count < target { big.append(contentsOf: corpus) }
+print("bytes", big.count)
+
+// A: Swift SIMD16, lane loop on hit
+func swiftLane(_ b: UnsafeBufferPointer<UInt8>, _ ch: UInt8) -> Int {
+    var n = 0, i = 0; let nd = SIMD16<UInt8>(repeating: ch)
+    while i + 16 <= b.count {
+        let v = UnsafeRawPointer(b.baseAddress! + i).loadUnaligned(as: SIMD16<UInt8>.self)
+        let m = v .== nd
+        if any(m) { for k in 0 ..< 16 where m[k] { n += 1 } }
+        i += 16
+    }
+    while i < b.count { if b[i] == ch { n += 1 }; i += 1 }
+    return n
+}
+// A': Swift SIMD, bit-weights + horizontal add -> 16-bit mask, popcount-style iterate
+let weights = SIMD16<UInt8>(1,2,4,8,16,32,64,128,1,2,4,8,16,32,64,128)
+func swiftMask(_ b: UnsafeBufferPointer<UInt8>, _ ch: UInt8) -> Int {
+    var n = 0, i = 0; let nd = SIMD16<UInt8>(repeating: ch)
+    while i + 16 <= b.count {
+        let v = UnsafeRawPointer(b.baseAddress! + i).loadUnaligned(as: SIMD16<UInt8>.self)
+        let m = (v .== nd)
+        if any(m) {
+            let w = SIMD16<UInt8>(repeating: 0).replacing(with: weights, where: m)
+            var bits = UInt32(w.lowHalf.wrappedSum()) | (UInt32(w.highHalf.wrappedSum()) << 8)
+            while bits != 0 { n += 1; bits &= bits &- 1 }
+        }
+        i += 16
+    }
+    while i < b.count { if b[i] == ch { n += 1 }; i += 1 }
+    return n
+}
+func memchrLoop(_ b: UnsafeBufferPointer<UInt8>, _ ch: UInt8) -> Int {
+    var n = 0; var p = UnsafeRawPointer(b.baseAddress!); var left = b.count
+    while left > 0, let q = memchr(p, Int32(ch), left) { n += 1; let adv = UnsafeRawPointer(q) - p + 1; p += adv; left -= adv }
+    return n
+}
+func scalar(_ b: UnsafeBufferPointer<UInt8>, _ ch: UInt8) -> Int { var n = 0; for x in b where x == ch { n += 1 }; return n }
+
+big.withUnsafeBufferPointer { b in
+  for (name, ch) in [("sparse 'Q'", UInt8(ascii: "Q")), ("medium 'f'", UInt8(ascii: "f")), ("dense 'e'", UInt8(ascii: "e")), ("densest ' '", UInt8(ascii: " "))] {
+    print("--", name)
+    let rs: [(String, (Double, Int))] = [
+      ("scalar", med { scalar(b, ch) }),
+      ("swift SIMD16 lane loop", med { swiftLane(b, ch) }),
+      ("swift SIMD16 mask+addv", med { swiftMask(b, ch) }),
+      ("memchr loop", med { memchrLoop(b, ch) }),
+      ("C NEON shrn16", med { count_shrn(b.baseAddress!, b.count, ch) }),
+      ("C NEON shrn 64B", med { count_shrn64(b.baseAddress!, b.count, ch) }),
+    ]
+    for (n, r) in rs { print(String(format: "%-26@ %8.2f ms  %7.2f GB/s  count %d", n as NSString, r.0, Double(b.count)/r.0/1e6, r.1)) }
+  }
+}
