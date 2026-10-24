@@ -1,0 +1,14 @@
+literal	Sendable
+alternation	import|struct|enum|class|protocol
+func-async	func\s+\w+\(.*async
+captures	(\w+)\s*:\s*(\w+)\s*\{
+case-insensitive	(?i)todo|fixme|hack
+no-match-rare-byte	Q[0-9]+Z
+word-boundary	\bclass\b
+line-anchor	(?m)^import \w+$
+prefix-nullable	\w*Error
+blank-lines	(?m)^\s*$
+optional-word	\w*
+trailing-space	[ \t]*$
+empty-word-edges	\b
+empty-line-ends	(?m)$

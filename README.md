@@ -3,10 +3,11 @@
 A regular-expression engine for Swift whose search time is proportional to the pattern times the input, for every pattern.
 No backtracking, so no pattern can make a search exponential. Zero package dependencies; the engine reads UTF-8 bytes.
 
-**Status.** The RE2 syntax subset works, is checked against Go's `regexp` (and ICU where ICU agrees with RE2), and is faster than
-`NSRegularExpression` and Swift `Regex` on every measured workload: 3 to 45x on most, 1.0 to 2.4x on the thinnest (patterns that match
-empty and have no literal to skip to). A prefilter, a lazy DFA and a reverse DFA do the work; the Pike VM only fills in captures. Numbers,
-caveats and what is not covered: `docs/ROADMAP.md`. Unicode classes and a `String` API are next.
+**Status.** The RE2 syntax subset works and is checked against Go's `regexp` (and ICU where ICU agrees with RE2). Measured on one corpus
+and one machine, it is faster than `NSRegularExpression`, Swift `Regex` and (on most rows) Go's `regexp`, and **slower than Rust's
+`regex` crate and PCRE2 with JIT on every workload** (median 2.5 to 3.8x). It is not the fastest engine and does not claim to be; see
+`docs/research/engine-comparison-2026-10.md` for the numbers, the causes, and the work queue. Unicode classes, a `String` API and the
+other dialects (I-Regexp, ECMAScript, PCRE2) are not built yet.
 
 ```swift
 import AemiRegex
@@ -30,6 +31,7 @@ git config core.hooksPath .githooks
 swift test -c release --enable-testable-imports        # the suite
 AEMIREGEX_DEV=1 swift package --disable-sandbox lint   # the shared lint
 Scripts/analyzers.sh                                   # deadwood, dolly, arcleak
+Scripts/bench-compare.sh                               # AemiRegex vs ICU, Swift Regex, Go, Rust regex, PCRE2 JIT
 AEMIREGEX_DEV=1 swift run -c release AemiRegexBench <corpus-dir>
 go run Scripts/golden/gen.go > Tests/AemiRegexTests/Resources/re2-golden.jsonl   # regenerate the Go oracle fixture
 ```
