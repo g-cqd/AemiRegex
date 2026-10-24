@@ -1,0 +1,10 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.profraw
+*.profdata
+/.benchmarkBaselines/
+_site/
+.DS_Store
