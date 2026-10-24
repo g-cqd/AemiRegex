@@ -57,4 +57,11 @@ struct SemanticsTests {
         #expect(try Pattern("a*").firstMatch(in: bytes("a"), from: -1) == nil)
         #expect(try Pattern("a*").firstMatch(in: bytes("a"), from: 1)?.range == 1 ..< 1)
     }
+
+    @Test func `the README example gives the ranges it states`() throws {
+        let pattern = try Pattern(#"(?P<name>\w+)@(\w+)\.com"#)
+        let match = try #require(pattern.firstMatch(in: bytes("mail bob@example.com now")))
+        #expect(match.range == 5 ..< 20)
+        #expect(match.groups[try #require(pattern.groupIndex(named: "name"))] == 5 ..< 8)
+    }
 }

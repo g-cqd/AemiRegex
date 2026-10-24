@@ -31,5 +31,6 @@ public enum PatternError: Error, Equatable, Sendable {
         case nestingDepth
         case programSize
         case repetitionCount
+        case captureCount
     }
 }

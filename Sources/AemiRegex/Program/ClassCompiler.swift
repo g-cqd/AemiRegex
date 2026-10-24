@@ -1,0 +1,35 @@
+/// Turns a set of scalar values into instructions that match one UTF-8 encoded member.
+struct ClassCompiler {
+    private(set) var sets: ContiguousArray<ByteSet> = []
+    private var index: [ByteSet: Int] = [:]
+
+    /// The instructions for `set`. An empty set compiles to an instruction that never matches.
+    mutating func compile(_ set: ScalarSet) -> [Instruction] {
+        var branches: [[Instruction]] = []
+        let ascii = set.ranges.compactMap { range -> ClosedRange<UInt32>? in
+            range.overlaps(0 ... 0x7F) ? range.clamped(to: 0 ... 0x7F) : nil
+        }
+        if ascii.count == 1, let only = ascii.first {
+            branches.append([.byteRange(UInt8(only.lowerBound), UInt8(only.upperBound))])
+        } else if !ascii.isEmpty {
+            var bytes = ByteSet()
+            for range in ascii { bytes.insert(UInt8(range.lowerBound) ... UInt8(range.upperBound)) }
+            branches.append([.byteSet(intern(bytes))])
+        }
+        for range in set.ranges where range.upperBound > 0x7F {
+            let clipped = range.clamped(to: 0x80 ... ScalarSet.maxScalar)
+            for sequence in Utf8Sequences.sequences(clipped) {
+                branches.append(sequence.map { .byteRange($0.lo, $0.hi) })
+            }
+        }
+        if branches.isEmpty { return [.byteSet(intern(ByteSet()))] }
+        return Fragment.alternation(branches)
+    }
+
+    private mutating func intern(_ set: ByteSet) -> Int {
+        if let existing = index[set] { return existing }
+        sets.append(set)
+        index[set] = sets.count - 1
+        return sets.count - 1
+    }
+}
