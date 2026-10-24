@@ -43,12 +43,16 @@ public struct Pattern: Sendable {
         let plan = try Self.makePlan(pattern, program, limits: limits, engine: engine)
         self.program = program
         self.plan = plan
-        prefilter = plan == nil ? Prefilter(.none) : Prefilter(analyzing: program)
+        let prefilter = plan == nil ? Prefilter(.none) : Prefilter(analyzing: program)
+        self.prefilter = prefilter
+        let markStart = prefilter.kind != .none
         let cacheLimit = limits.maxDFACacheBytes
         pool = ScratchPool {
             SearchScratch(
                 forward: plan.map {
-                    LazyDFA(program, classes: $0.forwardClasses, reverse: false, cacheLimit: cacheLimit)
+                    LazyDFA(
+                        program, classes: $0.forwardClasses, reverse: false, cacheLimit: cacheLimit,
+                        markStart: markStart)
                 },
                 reverse: plan.map {
                     LazyDFA($0.reverse, classes: $0.reverseClasses, reverse: true, cacheLimit: cacheLimit)
