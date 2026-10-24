@@ -17,8 +17,20 @@ let workloads = [
     Workload(name: "func-async", pattern: #"func\s+\w+\(.*async"#, swiftRegexOK: true),
     Workload(name: "class+captures", pattern: #"(\w+)\s*:\s*(\w+)\s*\{"#, swiftRegexOK: true),
     Workload(name: "case-insensitive", pattern: "(?i)todo|fixme|hack", swiftRegexOK: false),
-    Workload(name: "no-match-rare-byte", pattern: #"Q[0-9]+Z"#, swiftRegexOK: true)
+    Workload(name: "no-match-rare-byte", pattern: #"Q[0-9]+Z"#, swiftRegexOK: true),
+    // These use assertions or can match empty, so they run on the Pike VM, not the DFA.
+    Workload(name: "word-boundary", pattern: #"\bclass\b"#, swiftRegexOK: true),
+    Workload(name: "line-anchor", pattern: #"(?m)^import \w+$"#, swiftRegexOK: true),
+    Workload(name: "nullable-prefix", pattern: #"\w*Error"#, swiftRegexOK: true),
+    // These can match the empty string, so they also run on the Pike VM.
+    Workload(name: "blank-lines", pattern: #"(?m)^\s*$"#, swiftRegexOK: true),
+    Workload(name: "optional-word", pattern: #"\w*"#, swiftRegexOK: true),
+    Workload(name: "trailing-space", pattern: #"[ \t]*$"#, swiftRegexOK: true),
+    Workload(name: "empty-word-edges", pattern: #"\b"#, swiftRegexOK: true),
+    Workload(name: "empty-line-ends", pattern: "(?m)$", swiftRegexOK: true)
 ]
+// Match counts of the nullable rows can differ between engines: ICU and Swift Regex report an empty match that touches the previous
+// match, RE2 and Go (and AemiRegex) skip it, and `\w` is Unicode in ICU and ASCII here. Speed is comparable; counts are not.
 
 let root = CommandLine.arguments.dropFirst().first ?? FileManager.default.currentDirectoryPath
 var texts: [String] = []
@@ -75,14 +87,15 @@ for workload in workloads {
     }
 }
 
-// Pathological: a backtracking engine is exponential here. Only AemiRegex is run at full size; ICU and Swift Regex at 26 bytes.
-let evil = [UInt8](repeating: UInt8(ascii: "a"), count: 100_000)
-if let ours = try? Pattern("(a+)+b") {
-    let r = measure(rounds: 3) { ours.firstMatch(in: evil) == nil ? 0 : 1 }
-    print("(a+)+b on 100000 'a':  AemiRegex \(String(format: "%.2f", r.median)) ms")
+// Pathological: a backtracking engine is exponential here. AemiRegex runs the full size; ICU only 26 bytes (it would not finish).
+// The haystack has no match, but every byte is a possible start, so the prefilter cannot reject it and the DFA does the work.
+let evil = [UInt8](repeating: UInt8(ascii: "a"), count: 100_000) + [UInt8(ascii: "b")]
+if let ours = try? Pattern("(a|aa)+$") {
+    let r = measure(rounds: 5) { ours.firstMatch(in: evil) == nil ? 0 : 1 }
+    print("(a|aa)+$ on 100000 'a'+b:  AemiRegex \(String(format: "%.2f", r.median)) ms")
 }
 let short = String(repeating: "a", count: 26)
-if let icu = try? NSRegularExpression(pattern: "^(a+)+$") {
+if let icu = try? NSRegularExpression(pattern: "(a|aa)+$") {
     let r = measure(rounds: 1) { icu.numberOfMatches(in: short + "b", range: NSRange(location: 0, length: 27)) }
-    print("^(a+)+$ on 26 'a'+b:   NSRegex   \(String(format: "%.2f", r.median)) ms")
+    print("(a|aa)+$ on 26 'a'+b:      NSRegex   \(String(format: "%.2f", r.median)) ms")
 }

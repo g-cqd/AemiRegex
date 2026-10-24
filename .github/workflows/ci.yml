@@ -55,3 +55,5 @@ jobs:
         run: |
           go run Scripts/golden/gen.go > /tmp/re2-golden.jsonl
           diff -u Tests/AemiRegexTests/Resources/re2-golden.jsonl /tmp/re2-golden.jsonl
+          go run Scripts/golden/generated/gen.go > /tmp/re2-generated.jsonl
+          diff -u Tests/AemiRegexTests/Resources/re2-generated.jsonl /tmp/re2-generated.jsonl

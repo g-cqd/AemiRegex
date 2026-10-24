@@ -3,8 +3,10 @@
 A regular-expression engine for Swift whose search time is proportional to the pattern times the input, for every pattern.
 No backtracking, so no pattern can make a search exponential. Zero package dependencies; the engine reads UTF-8 bytes.
 
-**Status: Phase 1.** The RE2 syntax subset works and is checked against Go's `regexp` and ICU. It is not yet faster than
-`NSRegularExpression` on literal-heavy searches; see `docs/ROADMAP.md` for the measured numbers and the plan.
+**Status.** The RE2 syntax subset works, is checked against Go's `regexp` (and ICU where ICU agrees with RE2), and is faster than
+`NSRegularExpression` and Swift `Regex` on every measured workload: 3 to 45x on most, 1.0 to 2.4x on the thinnest (patterns that match
+empty and have no literal to skip to). A prefilter, a lazy DFA and a reverse DFA do the work; the Pike VM only fills in captures. Numbers,
+caveats and what is not covered: `docs/ROADMAP.md`. Unicode classes and a `String` API are next.
 
 ```swift
 import AemiRegex
