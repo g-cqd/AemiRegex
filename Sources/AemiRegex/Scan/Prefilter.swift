@@ -8,19 +8,28 @@ struct Prefilter: Sendable {
         case byte(UInt8)
         /// A match starts with these two bytes.
         case pair(UInt8, UInt8)
+        /// A match starts with one of these two-byte pairs (at most ``ByteScan/maxPairCount``), in ascending order.
+        case pairs([BytePair])
         /// A match starts with one of these bytes (at most ``ByteScan/maxSetSize``), in ascending order.
         case set([UInt8])
     }
 
     let kind: Kind
     private let needles: [SIMD16<UInt8>]
+    private let secondNeedles: [SIMD16<UInt8>]
 
     init(_ kind: Kind) {
         self.kind = kind
-        if case .set(let bytes) = kind {
-            needles = bytes.map { SIMD16(repeating: $0) }
-        } else {
-            needles = []
+        switch kind {
+            case .set(let bytes):
+                needles = bytes.map { SIMD16(repeating: $0) }
+                secondNeedles = []
+            case .pairs(let pairs):
+                needles = pairs.map { SIMD16(repeating: $0.first) }
+                secondNeedles = pairs.map { SIMD16(repeating: $0.second) }
+            default:
+                needles = []
+                secondNeedles = []
         }
     }
 
@@ -30,6 +39,9 @@ struct Prefilter: Sendable {
             case .none: from <= bytes.count ? from : nil
             case .byte(let byte): unsafe ByteScan.firstIndex(of: byte, in: bytes, from: from)
             case .pair(let first, let second): unsafe ByteScan.firstIndex(ofPair: first, second, in: bytes, from: from)
+            case .pairs(let pairs):
+                unsafe ByteScan.firstIndex(
+                    ofAnyPairNeedles: needles, secondNeedles, pairs: pairs, in: bytes, from: from)
             case .set(let set): unsafe ByteScan.firstIndex(ofAnyNeedles: needles, bytes: set, in: bytes, from: from)
         }
     }
@@ -50,6 +62,10 @@ struct Prefilter: Sendable {
             case 2: self.init(.pair(literal[0], literal[1]))
             case 1: self.init(.byte(literal[0]))
             default:
+                if let pairs = closure.leadingPairs(limit: ByteScan.maxPairCount) {
+                    self.init(.pairs(pairs))
+                    return
+                }
                 let bytes = firstBytes.members
                 self.init(bytes.count <= ByteScan.maxSetSize && !bytes.isEmpty ? .set(bytes) : .none)
         }

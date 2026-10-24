@@ -37,6 +37,11 @@ if arguments.first == "--csv", arguments.count == 3 {
     runCSV(workloadsPath: arguments[1], corpusPath: arguments[2])
     exit(0)
 }
+if arguments.first == "--loop", arguments.count == 4 {
+    // Profile mode: search the corpus again and again so a sampler sees a steady state. `--loop <pattern> <corpus> <seconds>`
+    runLoop(pattern: arguments[1], corpusPath: arguments[2], seconds: Double(arguments[3]) ?? 5)
+    exit(0)
+}
 let root = arguments.first ?? FileManager.default.currentDirectoryPath
 var texts: [String] = []
 if let walker = FileManager.default.enumerator(atPath: root) {

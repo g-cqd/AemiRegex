@@ -14,15 +14,21 @@ struct PrefilterTests {
         Case(pattern: "Sendable", kind: .pair(0x53, 0x65)),
         Case(pattern: "func\\s+\\w+", kind: .pair(0x66, 0x75)),
         Case(pattern: "Q[0-9]+Z", kind: .byte(0x51)),
-        Case(pattern: "import|struct|enum", kind: .set([0x65, 0x69, 0x73])),
-        Case(pattern: "(?i)todo", kind: .set([0x54, 0x74])),
+        Case(
+            pattern: "import|struct|enum",
+            kind: .pairs([BytePair(0x65, 0x6E), BytePair(0x69, 0x6D), BytePair(0x73, 0x74)])),
+        Case(
+            pattern: "(?i)todo",
+            kind: .pairs([BytePair(0x54, 0x4F), BytePair(0x54, 0x6F), BytePair(0x74, 0x4F), BytePair(0x74, 0x6F)])),
         Case(pattern: "é", kind: .pair(0xC3, 0xA9)),
         Case(pattern: "[0-9]+x", kind: .none),
         Case(pattern: "a*", kind: .none),
         Case(pattern: "^abc", kind: .pair(0x61, 0x62)),
         Case(pattern: #"\bclass\b"#, kind: .pair(0x63, 0x6C)),
         Case(pattern: "(?m)^$", kind: .none),
-        Case(pattern: "(a|b|c|d|e|f|g|h|i)x", kind: .none)
+        Case(pattern: "(a|b|c|d|e|f|g|h|i)x", kind: .pairs((0x61 ... 0x69).map { BytePair($0, 0x78) })),
+        Case(pattern: "[a-z][a-z]x", kind: .none),
+        Case(pattern: "a|bc", kind: .set([0x61, 0x62]))
     ]
 
     @Test(arguments: cases)
