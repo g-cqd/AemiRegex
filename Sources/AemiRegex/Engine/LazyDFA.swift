@@ -34,6 +34,8 @@ struct LazyDFA {
     private let longest: Bool
     private let usesContext: Bool
     private let cacheLimit: Int
+    /// Whether the start states are flagged so the search consults the prefilter. A pattern without a prefilter skips that work.
+    private let markStart: Bool
 
     private var table: [Int32] = []
     private var flags: [UInt8] = []
@@ -48,7 +50,7 @@ struct LazyDFA {
     private var sawMatch = false
 
     /// Forward searches are unanchored and leftmost-first; reverse searches are anchored and longest.
-    init(_ program: Program, classes: ByteClasses, reverse: Bool, cacheLimit: Int) {
+    init(_ program: Program, classes: ByteClasses, reverse: Bool, cacheLimit: Int, markStart: Bool = false) {
         instructions = program.instructions
         sets = program.sets
         self.classes = classes
@@ -56,6 +58,7 @@ struct LazyDFA {
         longest = reverse
         usesContext = program.instructions.contains { $0.op == .assertion }
         self.cacheLimit = cacheLimit
+        self.markStart = markStart
         walker = EpsilonWalker(instructionCount: program.instructions.count)
         reset()
     }
@@ -80,7 +83,7 @@ struct LazyDFA {
             sawMatch = false
             closure(0, into: &key)
             let id = intern(key, force: true) ?? 0
-            if !anchored { flags[Int(id)] |= Flag.start }
+            if !anchored, markStart { flags[Int(id)] |= Flag.start }
             startStates.append(id)
         }
     }
