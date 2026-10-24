@@ -12,7 +12,7 @@ extension Parser {
         switch try parseEscape(inClass: false) {
             case .scalar(let scalar): try emitLiteral(scalar)
             case .set(let set): try emitSet(set)
-            case .assertion(let assertion): try emit([.assertion(assertion)], nullable: true)
+            case .assertion(let assertion): try emit([.assertion(oriented(assertion))], nullable: true)
             case .quote:
                 while position < scalars.count {
                     if scalars[position] == 0x5C, peek(1) == 0x45 {

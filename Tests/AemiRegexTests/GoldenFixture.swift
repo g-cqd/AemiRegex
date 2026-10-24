@@ -18,13 +18,18 @@ struct GoldenPattern: Sendable, CustomTestStringConvertible {
 
 enum GoldenFixture {
     /// Rows in file order; empty when the fixture cannot be read (a test asserts that it is not).
-    static let rows: [GoldenRow] = {
-        guard let url = Bundle.module.url(forResource: "re2-golden", withExtension: "jsonl", subdirectory: "Resources"),
+    static let rows: [GoldenRow] = load("re2-golden")
+
+    /// Random patterns with assertions and flags, from `Scripts/golden/generated/gen.go`.
+    static let generatedRows: [GoldenRow] = load("re2-generated")
+
+    private static func load(_ name: String) -> [GoldenRow] {
+        guard let url = Bundle.module.url(forResource: name, withExtension: "jsonl", subdirectory: "Resources"),
             let text = try? String(contentsOf: url, encoding: .utf8)
         else { return [] }
         let decoder = JSONDecoder()
         return text.split(separator: "\n").compactMap { try? decoder.decode(GoldenRow.self, from: Data($0.utf8)) }
-    }()
+    }
 
     static let validPatterns: [GoldenPattern] = {
         var order: [String] = []

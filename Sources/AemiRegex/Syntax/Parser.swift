@@ -4,6 +4,8 @@ struct Parser {
     /// `offsets[i]` is the UTF-8 offset of `scalars[i]`; the last entry is the pattern's length in bytes.
     let offsets: [Int]
     let limits: Pattern.Limits
+    /// Builds the program for the reversed pattern (atoms in reverse order, UTF-8 sequences reversed), used to find match starts.
+    let reverse: Bool
     var position = 0
     var flags = Flags()
     var frames: [Frame]
@@ -13,7 +15,7 @@ struct Parser {
     /// Instructions emitted so far, counted conservatively, to enforce ``Pattern/Limits/maxProgramSize``.
     var emitted = 0
 
-    private init(_ pattern: String, limits: Pattern.Limits) {
+    private init(_ pattern: String, limits: Pattern.Limits, reverse: Bool) {
         var scalars: [UInt32] = []
         var offsets: [Int] = []
         var offset = 0
@@ -26,12 +28,15 @@ struct Parser {
         self.scalars = scalars
         self.offsets = offsets
         self.limits = limits
+        self.reverse = reverse
         frames = [Frame(kind: .root, openOffset: 0, savedFlags: Flags())]
     }
 
-    static func compile(_ pattern: String, limits: Pattern.Limits) throws(PatternError) -> Program {
+    static func compile(_ pattern: String, limits: Pattern.Limits, reverse: Bool = false) throws(PatternError)
+        -> Program
+    {
         guard pattern.utf8.count <= limits.maxPatternBytes else { throw .limit(.patternLength) }
-        var parser = Parser(pattern, limits: limits)
+        var parser = Parser(pattern, limits: limits, reverse: reverse)
         return try parser.parse()
     }
 
@@ -52,7 +57,7 @@ struct Parser {
         guard frames.count == 1 else { throw .syntax(.unmatchedOpenParen, offset: top.openOffset) }
         emitted += 2 * top.branches.count
         try checkSize()
-        var instructions = ContiguousArray(top.finished().code)
+        var instructions = ContiguousArray(top.finished(reversed: reverse).code)
         instructions.append(.match)
         guard instructions.count * 2 * (captureCount + 1) <= limits.maxThreadTableEntries else {
             throw .limit(.programSize)
@@ -85,10 +90,10 @@ struct Parser {
                     flags.dotAll ? ScalarSet(normalizing: [0 ... ScalarSet.maxScalar]) : ScalarSet.newline.negated())
                 position += 1
             case 0x5E:
-                try emit([.assertion(flags.multiLine ? .beginLine : .beginText)], nullable: true)
+                try emit([.assertion(oriented(flags.multiLine ? .beginLine : .beginText))], nullable: true)
                 position += 1
             case 0x24:
-                try emit([.assertion(flags.multiLine ? .endLine : .endText)], nullable: true)
+                try emit([.assertion(oriented(flags.multiLine ? .endLine : .endText))], nullable: true)
                 position += 1
             case 0x5C: try parseEscapeAtom()
             default:
@@ -98,6 +103,9 @@ struct Parser {
     }
 
     // MARK: Emitting
+
+    /// An assertion as the program being built reads the text: mirrored in the reverse program.
+    func oriented(_ assertion: Assertion) -> Assertion { reverse ? assertion.mirrored : assertion }
 
     mutating func checkSize() throws(PatternError) {
         if emitted > limits.maxProgramSize { throw .limit(.programSize) }
@@ -110,7 +118,7 @@ struct Parser {
     }
 
     mutating func emitSet(_ set: ScalarSet) throws(PatternError) {
-        try emit(classes.compile(set), nullable: false)
+        try emit(classes.compile(set, reversed: reverse), nullable: false)
     }
 
     mutating func emitLiteral(_ scalar: UInt32) throws(PatternError) {
@@ -142,9 +150,9 @@ struct Parser {
         guard frames.count > 1 else { throw .syntax(.unmatchedCloseParen, offset: offset(position)) }
         let frame = frames.removeLast()
         emitted += 2 * frame.branches.count
-        let (body, nullable) = frame.finished()
+        let (body, nullable) = frame.finished(reversed: reverse)
         var code = body
-        if case .group(let capture?) = frame.kind {
+        if !reverse, case .group(let capture?) = frame.kind {
             code = [.save(2 * capture)] + body + [.save(2 * capture + 1)]
             emitted += 2
         }
