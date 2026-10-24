@@ -32,7 +32,12 @@ let workloads = [
 // Match counts of the nullable rows can differ between engines: ICU and Swift Regex report an empty match that touches the previous
 // match, RE2 and Go (and AemiRegex) skip it, and `\w` is Unicode in ICU and ASCII here. Speed is comparable; counts are not.
 
-let root = CommandLine.arguments.dropFirst().first ?? FileManager.default.currentDirectoryPath
+let arguments = Array(CommandLine.arguments.dropFirst())
+if arguments.first == "--csv", arguments.count == 3 {
+    runCSV(workloadsPath: arguments[1], corpusPath: arguments[2])
+    exit(0)
+}
+let root = arguments.first ?? FileManager.default.currentDirectoryPath
 var texts: [String] = []
 if let walker = FileManager.default.enumerator(atPath: root) {
     for case let path as String in walker where path.hasSuffix(".swift") && !path.contains(".build") {

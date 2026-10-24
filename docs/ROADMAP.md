@@ -9,6 +9,7 @@ test that can fail. Phase 1 is done; the rest is ordered by dependency.
 |---|---|---|
 | Safe | Linear time for every pattern; hard limits on pattern size, nesting, program size, repetition, captures, thread-table memory and DFA cache | **Done** for the RE2 subset |
 | Fast: beat NSRegularExpression and Swift Regex | `SpeedGateTests` (release, interleaved medians, equal match counts) and `Benchmarks/AemiRegexBench` | **Met** on every measured workload. See below for the margins and what is not covered |
+| Fast: against the fastest engines (Rust `regex`, PCRE2 JIT, Go) | `Scripts/bench-compare.sh`, 14 workloads, two modes | **Not met.** Third: faster than Go, ICU and Swift Regex; slower than Rust and PCRE2-JIT on every row. `docs/research/engine-comparison-2026-10.md` |
 | Memory efficient | Allocation count per search; bytes per state; cache and table bounds | Bounded (64 MB Pike tables, 2 MB per DFA); per-search allocation removed for matching without captures; not yet minimised |
 | Compliant | Differential oracle per norm, in CI | RE2 syntax subset, checked against Go on 8,000 generated and 2,369 curated cases |
 
