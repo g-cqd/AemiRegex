@@ -40,14 +40,14 @@ extension Parser {
         }
         if flags.swapGreed { greedy.toggle() }
 
-        let atom = Array(top.current[operand.start...])
+        let atom = Array(top.current.code[operand.start...])
         let copies = Swift.max(max ?? (min + 1), 1)
         if emitted - atom.count + atom.count * copies + 2 * copies + 2 > limits.maxProgramSize {
             throw .limit(.programSize)
         }
         let code = Fragment.repetition(of: atom, min: min, max: max, greedy: greedy, nullable: operand.nullable)
-        top.current.removeSubrange(operand.start...)
-        top.current += code
+        top.current.code.removeSubrange(operand.start...)
+        top.current.code += code
         emitted += code.count - atom.count
         top.currentNullable = operand.nullableBefore && (min == 0 || operand.nullable)
         top.last = nil

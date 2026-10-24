@@ -19,16 +19,16 @@ struct Frame {
     var openOffset: Int
     /// The flags to restore when the group closes.
     var savedFlags: Flags
-    var branches: [[Instruction]] = []
+    var branches: [Branch] = []
     var branchesNullable = false
-    var current: [Instruction] = []
+    var current = Branch()
     var currentNullable = true
     var last: Operand?
     var lastWasRepetition = false
 
     mutating func push(_ atom: [Instruction], nullable: Bool) {
-        last = Operand(start: current.count, nullable: nullable, nullableBefore: currentNullable)
-        current += atom
+        last = Operand(start: current.code.count, nullable: nullable, nullableBefore: currentNullable)
+        current.append(atom)
         currentNullable = currentNullable && nullable
         lastWasRepetition = false
     }
@@ -36,15 +36,16 @@ struct Frame {
     mutating func startNextBranch() {
         branches.append(current)
         branchesNullable = branchesNullable || currentNullable
-        current = []
+        current = Branch()
         currentNullable = true
         last = nil
         lastWasRepetition = false
     }
 
-    /// The code of the whole group, and whether it can match empty.
-    func finished() -> (code: [Instruction], nullable: Bool) {
-        guard !branches.isEmpty else { return (current, currentNullable) }
-        return (Fragment.alternation(branches + [current]), branchesNullable || currentNullable)
+    /// The code of the whole group, and whether it can match empty. With `reversed`, each branch's atoms come in reverse order.
+    func finished(reversed: Bool) -> (code: [Instruction], nullable: Bool) {
+        guard !branches.isEmpty else { return (current.ordered(reversed: reversed), currentNullable) }
+        let all = (branches + [current]).map { $0.ordered(reversed: reversed) }
+        return (Fragment.alternation(all), branchesNullable || currentNullable)
     }
 }

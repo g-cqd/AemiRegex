@@ -4,21 +4,10 @@ import Testing
 @testable import AemiRegex
 
 /// Generated patterns over a tiny alphabet, run against `NSRegularExpression` (ICU), which has Perl-style leftmost-first semantics.
-/// Quantifiers apply only to atoms that cannot match empty: how a nullable loop body assigns captures is a documented difference
+/// No assertions are generated: ICU and RE2 disagree on `\b`, `\B`, `$` and multiline `^` in some cases (on three generated cases
+/// Go sided with AemiRegex), so assertions are checked against Go in `GeneratedGoldenTests`. Quantifiers apply only to atoms that cannot match empty: how a nullable loop body assigns captures is a documented difference
 /// between RE2-family engines and ICU, and Go (the independent oracle in `GoldenTests`) covers it.
 struct DifferentialTests {
-    // Reviewed: a fixed-seed SplitMix64 keeps the package free of the Aemi test kit (zero package dependencies).
-    private struct SplitMix64: RandomNumberGenerator {  // lint:allow
-        var state: UInt64
-        mutating func next() -> UInt64 {
-            state &+= 0x9E37_79B9_7F4A_7C15
-            var z = state
-            z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-            z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-            return z ^ (z >> 31)
-        }
-    }
-
     /// A generated fragment and whether it can match the empty string.
     private struct Fragment {
         var text: String

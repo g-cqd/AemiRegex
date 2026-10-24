@@ -3,8 +3,8 @@ struct ClassCompiler {
     private(set) var sets: ContiguousArray<ByteSet> = []
     private var index: [ByteSet: Int] = [:]
 
-    /// The instructions for `set`. An empty set compiles to an instruction that never matches.
-    mutating func compile(_ set: ScalarSet) -> [Instruction] {
+    /// The instructions for `set`; with `reversed`, each UTF-8 sequence is matched last byte first. An empty set compiles to an instruction that never matches.
+    mutating func compile(_ set: ScalarSet, reversed: Bool = false) -> [Instruction] {
         var branches: [[Instruction]] = []
         let ascii = set.ranges.compactMap { range -> ClosedRange<UInt32>? in
             range.overlaps(0 ... 0x7F) ? range.clamped(to: 0 ... 0x7F) : nil
@@ -19,7 +19,7 @@ struct ClassCompiler {
         for range in set.ranges where range.upperBound > 0x7F {
             let clipped = range.clamped(to: 0x80 ... ScalarSet.maxScalar)
             for sequence in Utf8Sequences.sequences(clipped) {
-                branches.append(sequence.map { .byteRange($0.lo, $0.hi) })
+                branches.append((reversed ? sequence.reversed() : sequence).map { .byteRange($0.lo, $0.hi) })
             }
         }
         if branches.isEmpty { return [.byteSet(intern(ByteSet()))] }

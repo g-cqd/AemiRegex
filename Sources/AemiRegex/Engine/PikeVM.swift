@@ -8,9 +8,10 @@ struct PikeVM {
 
     private let program: Program
     private let slotCount: Int
-    private var current: ThreadList
-    private var next: ThreadList
+    private var current = ThreadList(instructionCount: 0, slotCount: 0)
+    private var next = ThreadList(instructionCount: 0, slotCount: 0)
     private var working: [Int]
+    private var allocated = false
     private var stack: [Entry] = []
     /// The capture slots of the last match found, or all -1.
     private(set) var best: [Int]
@@ -18,29 +19,33 @@ struct PikeVM {
     init(_ program: Program) {
         self.program = program
         slotCount = program.slotCount
-        let count = program.instructions.count
-        current = ThreadList(instructionCount: count, slotCount: slotCount)
-        next = ThreadList(instructionCount: count, slotCount: slotCount)
         working = [Int](repeating: -1, count: slotCount)
         best = working
     }
 
     /// Finds the leftmost-first match that starts at or after `start`. Assertions see the bytes before `start`.
+    /// - Parameters:
+    ///   - haystack: The bytes to search.
+    ///   - start: Where the search begins.
+    ///   - anchored: Only a match that starts exactly at `start` counts.
+    ///   - limit: Treat the input as ending here for consuming bytes; assertions still see the whole haystack. A match found by
+    ///     the DFA ends at its limit, so the Pike VM need not run further to fill in the captures.
     /// - Returns: `true` when a match was found; its slots are in ``best``.
-    mutating func search(_ haystack: [UInt8], from start: Int) -> Bool {
-        let length = haystack.count
+    mutating func search(_ haystack: [UInt8], from start: Int, anchored: Bool = false, limit: Int? = nil) -> Bool {
+        let length = min(limit ?? haystack.count, haystack.count)
+        allocateIfNeeded()
         var found = false
         current.set.removeAll()
         next.set.removeAll()
         var position = start
         while true {
-            if !found, Self.isBoundary(haystack, position) {
+            if !found, !anchored || position == start, Self.isBoundary(haystack, position) {
                 for index in 0 ..< slotCount { working[index] = -1 }
                 working[0] = position
                 follow(0, at: position, haystack, intoNext: false)
             }
             if current.set.isEmpty {
-                if found || position >= length { break }
+                if found || anchored || position >= length { break }
                 position += 1
                 continue
             }
@@ -74,6 +79,15 @@ struct PikeVM {
             position += 1
         }
         return found
+    }
+
+    /// The thread tables are large, so they are built by the first search that needs them, not when the scratch is created.
+    private mutating func allocateIfNeeded() {
+        guard !allocated else { return }
+        let count = program.instructions.count
+        current = ThreadList(instructionCount: count, slotCount: slotCount)
+        next = ThreadList(instructionCount: count, slotCount: slotCount)
+        allocated = true
     }
 
     /// Moves the thread at `pc` past its byte instruction, into the next list.
