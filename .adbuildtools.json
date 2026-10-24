@@ -1,0 +1,9 @@
+{
+    "devEnv": "AEMIREGEX_DEV",
+    "shippedTargets": ["Sources/AemiRegex"],
+    "strtodBan": true,
+    "forceUnwrapBan": true,
+    "prngBan": true,
+    "untypedThrowsBan": true,
+    "wallClockBan": true
+}

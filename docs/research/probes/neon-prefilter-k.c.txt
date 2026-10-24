@@ -1,0 +1,30 @@
+#include <arm_neon.h>
+#include <stddef.h>
+#include <stdint.h>
+// Count positions of byte b. shrn variant: 4 bits per lane -> one 64-bit mask per 16 bytes.
+size_t count_shrn(const uint8_t *p, size_t n, uint8_t b) {
+    uint8x16_t nd = vdupq_n_u8(b); size_t c = 0, i = 0;
+    for (; i + 16 <= n; i += 16) {
+        uint8x16_t m = vceqq_u8(vld1q_u8(p + i), nd);
+        uint64_t bits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(m), 4)), 0);
+        while (bits) { c++; bits &= ~(0xFull << __builtin_ctzll(bits)); }
+    }
+    for (; i < n; i++) c += p[i] == b;
+    return c;
+}
+// Same, but 64 bytes per step with an OR-reduce reject (sparse input).
+size_t count_shrn64(const uint8_t *p, size_t n, uint8_t b) {
+    uint8x16_t nd = vdupq_n_u8(b); size_t c = 0, i = 0;
+    for (; i + 64 <= n; i += 64) {
+        uint8x16_t m0 = vceqq_u8(vld1q_u8(p+i), nd), m1 = vceqq_u8(vld1q_u8(p+i+16), nd),
+                   m2 = vceqq_u8(vld1q_u8(p+i+32), nd), m3 = vceqq_u8(vld1q_u8(p+i+48), nd);
+        if (vmaxvq_u8(vorrq_u8(vorrq_u8(m0, m1), vorrq_u8(m2, m3))) == 0) continue;
+        uint8x16_t ms[4] = {m0,m1,m2,m3};
+        for (int k = 0; k < 4; k++) {
+            uint64_t bits = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(ms[k]), 4)), 0);
+            while (bits) { c++; bits &= ~(0xFull << __builtin_ctzll(bits)); }
+        }
+    }
+    for (; i < n; i++) c += p[i] == b;
+    return c;
+}

@@ -1,0 +1,57 @@
+# The common legs (lint, build and test on macOS and Linux in debug and release, coverage, sanitizers) run in the shared
+# reusable workflow, pinned to the same Aemi revision as Package.swift. The jobs below are specific to this package:
+# the static analyzers, a freshness check of the Go-generated golden fixture, and the comparison benchmark.
+#
+# NOT YET RUN: this file was written locally and the repository has not been pushed. The first push will show whether the
+# reusable workflow's inputs match; treat a red first run as expected and read it.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["README.md", "CONTRIBUTING.md", "docs/**", ".gitignore", ".githooks/**"]
+  pull_request:
+    paths-ignore: ["README.md", "CONTRIBUTING.md", "docs/**", ".gitignore", ".githooks/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  AD_TYPECHECK_BUDGET_MS: "250"
+
+jobs:
+  quality:
+    uses: Aemi-Studio/aemi/.github/workflows/swift-quality.yml@afc1be3d578045b381e76f6b1712a81b39956ced # aemi afc1be3
+    with:
+      enable-static-analysis: false
+      dev-env-var: AEMIREGEX_DEV
+      enable-sanitizers: true
+      enable-coverage: true
+
+  static-analysis:
+    name: Static analysis (deadwood, dolly, arcleak)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run the analyzers
+        run: Scripts/analyzers.sh
+
+  golden-fixture:
+    name: Golden fixture matches Go
+    # The expected values in re2-golden.jsonl come from Go's regexp package. Regenerating them must change nothing: a diff means
+    # the fixture was edited by hand, or Go's behaviour changed (Go 1.27 already differs from RE2 on duplicate group names).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+      - name: Regenerate and compare
+        run: |
+          go run Scripts/golden/gen.go > /tmp/re2-golden.jsonl
+          diff -u Tests/AemiRegexTests/Resources/re2-golden.jsonl /tmp/re2-golden.jsonl

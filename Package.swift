@@ -16,6 +16,15 @@ let strictSettings: [SwiftSetting] = [
 // The engine reads attacker-controlled bytes, so every unsafe construct in it must be marked `unsafe`.
 let kernelSettings: [SwiftSetting] = strictSettings + [.strictMemorySafety()]
 
+// Dev tooling is gated behind AEMIREGEX_DEV, as in the sibling packages, so consumers never resolve it. The Aemi package
+// supplies the shared `format` / `lint` plugins that the shared CI workflow runs. Pinned to one revision, like AemiJSON.
+let isDev = Context.environment["AEMIREGEX_DEV"] != nil
+var packageDependencies: [Package.Dependency] = []
+if isDev {
+    packageDependencies.append(
+        .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "afc1be3d578045b381e76f6b1712a81b39956ced"))
+}
+
 let package = Package(
     name: "AemiRegex",
     // The floor matches AemiJSON and Aemi (`Synchronization`'s `Mutex`/`Atomic` need these releases).
@@ -23,6 +32,7 @@ let package = Package(
     products: [
         .library(name: "AemiRegex", targets: ["AemiRegex"])
     ],
+    dependencies: packageDependencies,
     targets: [
         // Zero package dependencies and no Foundation: a pattern is parsed, compiled and matched over UTF-8 bytes.
         .target(name: "AemiRegex", swiftSettings: kernelSettings),
@@ -33,3 +43,14 @@ let package = Package(
             swiftSettings: strictSettings)
     ]
 )
+
+// The comparison benchmark (AemiRegex against NSRegularExpression and Swift's Regex) is dev-only, like the siblings' suites:
+//   AEMIREGEX_DEV=1 swift run -c release AemiRegexBench [corpus-directory]
+if Context.environment["AEMIREGEX_DEV"] != nil {
+    package.targets.append(
+        .executableTarget(
+            name: "AemiRegexBench",
+            dependencies: ["AemiRegex"],
+            path: "Benchmarks/AemiRegexBench",
+            swiftSettings: strictSettings))
+}
