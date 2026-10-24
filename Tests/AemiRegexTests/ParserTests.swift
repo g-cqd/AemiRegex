@@ -59,4 +59,11 @@ struct ParserTests {
         #expect(pattern.groupIndex(named: "month") == 3)
         #expect(pattern.groupIndex(named: "day") == nil)
     }
+
+    @Test func `many capture groups in a large program are rejected before a search can allocate gigabytes`() throws {
+        // 1000 groups make 2002 slots per instruction; the thread tables hold instructions x slots entries.
+        let many = String(repeating: "(a)", count: 1000)
+        #expect(throws: PatternError.limit(.programSize)) { try Pattern(many) }
+        #expect(throws: Never.self) { try Pattern(String(repeating: "(a)", count: 100)) }
+    }
 }

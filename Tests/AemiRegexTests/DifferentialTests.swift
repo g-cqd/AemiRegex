@@ -7,7 +7,8 @@ import Testing
 /// Quantifiers apply only to atoms that cannot match empty: how a nullable loop body assigns captures is a documented difference
 /// between RE2-family engines and ICU, and Go (the independent oracle in `GoldenTests`) covers it.
 struct DifferentialTests {
-    private struct SplitMix64: RandomNumberGenerator {
+    // Reviewed: a fixed-seed SplitMix64 keeps the package free of the Aemi test kit (zero package dependencies).
+    private struct SplitMix64: RandomNumberGenerator {  // lint:allow
         var state: UInt64
         mutating func next() -> UInt64 {
             state &+= 0x9E37_79B9_7F4A_7C15

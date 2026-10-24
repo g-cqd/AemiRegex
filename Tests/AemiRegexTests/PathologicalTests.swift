@@ -4,7 +4,13 @@ import Testing
 
 /// A backtracking engine takes exponential time on these. The ceiling is generous (shared CI) but far below exponential.
 struct PathologicalTests {
-    private static let ceiling = Duration.seconds(2)
+    /// Exponential time on these inputs is beyond hours, so the ceiling only has to separate linear from exponential. A debug
+    /// build is about 20x slower than release, so it gets a wider ceiling instead of a flaky one.
+    #if DEBUG
+        private static let ceiling = Duration.seconds(60)
+    #else
+        private static let ceiling = Duration.seconds(2)
+    #endif
 
     struct Case: Sendable, CustomTestStringConvertible {
         let pattern: String
@@ -40,9 +46,12 @@ struct PathologicalTests {
         #expect(elapsed < Self.ceiling, "took \(elapsed)")
     }
 
-    @Test func `a huge alternation compiles and matches within the program size limit`() throws {
+    @Test func `a huge alternation compiles, and the earlier branch wins over the longer one`() throws {
         let words = (0 ..< 2000).map { "word\($0)" }
-        let pattern = try Pattern(words.joined(separator: "|"))
-        #expect(pattern.firstMatch(in: Array("xx word1999 yy".utf8))?.range == 3 ..< 11)
+        let haystack = Array("xx word1999 yy".utf8)
+        let inOrder = try Pattern(words.joined(separator: "|"))
+        #expect(inOrder.firstMatch(in: haystack)?.range == 3 ..< 8, "word1 comes before word1999")
+        let reversed = try Pattern(words.reversed().joined(separator: "|"))
+        #expect(reversed.firstMatch(in: haystack)?.range == 3 ..< 11)
     }
 }
