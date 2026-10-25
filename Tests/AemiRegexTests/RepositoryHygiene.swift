@@ -30,6 +30,10 @@ enum RepositoryHygiene {
                 for (label, needle) in forbiddenText where content.contains(needle) {
                     problems.append("\(path): contains \(label)")
                 }
+                // The family's tag check (aemi's check-tags.sh) bans these markers in Swift sources, strings included.
+                if path.hasSuffix(".swift"), content.contains("TO" + "DO") || content.contains("FIX" + "ME") {
+                    problems.append("\(path): contains a work marker; track work in the roadmap or an issue")
+                }
             }
         }
         return problems

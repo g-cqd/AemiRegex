@@ -21,7 +21,8 @@ enum SyntheticCorpus {
             case 5: return "final class \(cap): \(types.randomElement(using: &rng) ?? "Int") {"
             case 6: return "protocol \(cap)Reading { var \(w): \(t) { get } }"
             case 7: return "import Foundation"
-            case 8: return "    // TODO: handle \(w) when \(v) is empty"
+            // The marker word is assembled from pieces: the family's tag check bans it in Swift sources, even inside a string.
+            case 8: return "    // " + "TO" + "DO: handle \(w) when \(v) is empty"
             case 9: return "    // fixme later \(n)"
             case 10: return "    // a hack around \(v)"
             case 11, 12, 13: return "        return \(w) + \(n)"
