@@ -10,7 +10,7 @@ per-file workloads** (median 1.6x; faster on one, a pattern that ends in a byte 
 `docs/research/engine-comparison-2026-10-25.md` for the numbers, the causes and the safety nets. A
 small C target (NEON, SSSE3, scalar) holds the multi-literal prefilter kernel. I-Regexp (RFC 9485) is built, whole-string by default;
 `\p{…}` works over general categories and scripts, and `(?i)` folds Unicode. A separate type, `BacktrackingPattern`, runs backreferences, lookaround, atomic
-groups and possessive quantifiers in ECMAScript or PCRE2 syntax under a step and stack budget (see below).
+groups and possessive quantifiers in ECMAScript or PCRE2 syntax under a step and stack budget. Both `Pattern` and `BacktrackingPattern` support `String` and `Substring` in place.
 
 ```swift
 import AemiRegex
