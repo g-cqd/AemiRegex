@@ -25,7 +25,7 @@ Build and test in **release**. A debug build measures a program nobody ships, bu
 
 ## Gates
 
-`DocumentationLayoutTests` (documents), `NoRecursionTests` (ADR-0003, a heuristic scan of Swift and Go), `SourceStructureTests` (ADR-0010: one type per file, 250 lines), `RepositoryHygieneTests` (no build output, large file, home-directory path or token is tracked), `GoldenTests` and `GeneratedGoldenTests` (Go as oracle), `DifferentialTests` (ICU, assertion-free
+`DocumentationLayoutTests` (documents), `NoRecursionTests` (ADR-0003, a heuristic scan of Swift and Go), `SourceStructureTests` (ADR-0010: one type per file, 250 lines), `RepositoryHygieneTests` (no build output, large file, home-directory path or token is tracked), `GoldenTests` and `GeneratedGoldenTests` (Go as oracle), `BacktrackOracleTests` (`node` and `libpcre2` as oracles for `BacktrackingPattern`; fixtures from `Scripts/oracle/`), `DifferentialTests` (ICU, assertion-free
 patterns only), `EngineAgreementTests` and `MalformedInputTests` (the DFA pipeline against the Pike VM, which indexes with checks),
 `SpeedGateTests` (release only: faster than ICU on each workload with equal match counts), `ByteScanTests` and `TeddyTests` (poisoned
 tails, guard bands, dense candidates). The analyzers run under `--strict`: fix a finding, or accept it where it is with a reason
@@ -37,6 +37,11 @@ tails, guard bands, dense candidates). The analyzers run under `--strict`: fix a
   can. A new fast path needs a test that asserts it was taken.
 - **Python edits that miss silently.** `swift format` rewraps signatures, so a `str.replace` anchored on a one-line signature can match
   nothing and the script still "succeeds". Grep for the result of every scripted edit.
+- **A tolerance in a conformance test hides bugs.** The oracle suite once allowed 20% skipped cases; a missing `NOTEMPTY_ATSTART` made every
+  global PCRE2 search run out of budget, were skipped, and the suite passed. Budget skips now fail the test.
+- **Mutation scripts must fail loudly.** A `str.replace` that matches nothing leaves the code unchanged; assert the anchor is present.
+- **`node` has bugs.** `/[^a]$/u` finds nothing on a text that ends in an astral character (node 26.12.1), and V8 can start a match inside a
+  surrogate pair. The fixture script drops the second kind and counts it; the first is reported in the diary.
 - **Never `git checkout <file>` to undo a mutation.** It restores the last commit and discards uncommitted edits. Copy first, restore the copy.
 - **`sample` is shadowed by a Python script on this machine's PATH.** Use `/usr/bin/sample`. Half the samples are the idle thread
   (`__workq_kernreturn`); read the rest as 100%.
@@ -62,4 +67,6 @@ Atomic and buildable. The message states why. Never mix a refactor and a behavio
 Phases and their order are in `docs/roadmap/`; read an entry's `status:` and `blocked-by:` before starting it. The order the owner set is
 I-Regexp (0004, done), Unicode (0005, done), then the Rust gap (0006); ECMAScript, PCRE2 and the budgeted backtracking engine follow Unicode.
 Built: RE2 syntax, I-Regexp with whole-string matching, `\p` over categories and scripts, and Unicode simple case folding, all from generated
-tables (ADR-0009; Go's Unicode 17.0.0). Not built: binary properties, a `String` API, ECMAScript, PCRE2, the backtracking engine, a first CI run (the workflow was written locally and never executed).
+tables (ADR-0009; Go's Unicode 17.0.0); a `String` API; CI (green on Linux and macOS); and `BacktrackingPattern` (ADR-0011) for ECMAScript and
+PCRE2, checked against `node` and `libpcre2`. Not built: binary properties, ECMAScript `v` flag and non-`u` mode, PCRE2 recursion, conditionals
+and verbs, and the Rust gap items of 0006 beyond end-anchored patterns.

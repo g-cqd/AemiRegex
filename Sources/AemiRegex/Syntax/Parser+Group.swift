@@ -25,16 +25,7 @@ extension Parser {
     }
 
     private mutating func openNamed(nameStart: Int, open: Int) throws(PatternError) {
-        var end = nameStart
-        while end < scalars.count, scalars[end] != 0x3E {
-            guard Self.isNameScalar(scalars[end], first: end == nameStart) else {
-                throw .syntax(.invalidGroupName, offset: offset(end))
-            }
-            end += 1
-        }
-        guard end < scalars.count, end > nameStart else { throw .syntax(.invalidGroupName, offset: offset(nameStart)) }
-        var text = ""
-        for scalar in scalars[nameStart ..< end] { text.unicodeScalars.append(Unicode.Scalar(scalar) ?? "_") }
+        let (text, end) = try name(from: nameStart, until: 0x3E, allowing: Self.isNameScalar)
         guard names[text] == nil else { throw .syntax(.duplicateGroupName, offset: offset(nameStart)) }
         try pushCapture(name: text, open: open)
         position = end + 1
@@ -51,40 +42,23 @@ extension Parser {
     /// `(?flags)` changes the flags until the enclosing group ends; `(?flags:…)` opens a group that has them.
     private mutating func parseFlags(open: Int) throws(PatternError) {
         var updated = flags
-        var negating = false
-        var sawFlag = false
-        var index = position + 2
-        while true {
-            guard index < scalars.count else { throw .syntax(.unexpectedEnd, offset: offset(scalars.count)) }
-            let c = scalars[index]
-            switch c {
-                case 0x69, 0x6D, 0x73, 0x55:
-                    switch c {
-                        case 0x69: updated.ignoreCase = !negating
-                        case 0x6D: updated.multiLine = !negating
-                        case 0x73: updated.dotAll = !negating
-                        default: updated.swapGreed = !negating
-                    }
-                    sawFlag = true
-                case 0x2D:
-                    guard !negating else { throw .syntax(.invalidFlag, offset: offset(index)) }
-                    negating = true
-                    sawFlag = false
-                case 0x29, 0x3A:
-                    if negating, !sawFlag { throw .syntax(.invalidFlag, offset: offset(index)) }
-                    if c == 0x3A {
-                        frames.append(Frame(kind: .group(capture: nil), openOffset: offset(open), savedFlags: flags))
-                    } else {
-                        top.last = nil
-                        top.lastWasRepetition = false
-                    }
-                    flags = updated
-                    position = index + 1
-                    return
-                default:
-                    throw .syntax(.invalidFlag, offset: offset(index))
+        let scan = try scanFlags(from: position + 2, closers: [0x29, 0x3A]) { letter, negating in
+            switch letter {
+                case 0x69: updated.ignoreCase = !negating
+                case 0x6D: updated.multiLine = !negating
+                case 0x73: updated.dotAll = !negating
+                case 0x55: updated.swapGreed = !negating
+                default: return false
             }
-            index += 1
+            return true
         }
+        if scan.closer == 0x3A {
+            frames.append(Frame(kind: .group(capture: nil), openOffset: offset(open), savedFlags: flags))
+        } else {
+            top.last = nil
+            top.lastWasRepetition = false
+        }
+        flags = updated
+        position = scan.end + 1
     }
 }

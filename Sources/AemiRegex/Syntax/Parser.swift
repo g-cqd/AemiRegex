@@ -1,5 +1,5 @@
 /// Parses a pattern and compiles it in one pass, without a syntax tree and without recursion: groups live on an explicit stack.
-struct Parser {
+struct Parser: PatternCursor {
     let scalars: [UInt32]
     /// `offsets[i]` is the UTF-8 offset of `scalars[i]`; the last entry is the pattern's length in bytes.
     let offsets: [Int]
@@ -38,13 +38,6 @@ struct Parser {
     var top: Frame {
         get { frames[frames.count - 1] }
         _modify { yield &frames[frames.count - 1] }
-    }
-
-    func offset(_ index: Int) -> Int { offsets[min(index, offsets.count - 1)] }
-
-    func peek(_ delta: Int = 0) -> UInt32? {
-        let index = position + delta
-        return index < scalars.count ? scalars[index] : nil
     }
 
     mutating func parse() throws(PatternError) -> Program {
@@ -142,10 +135,8 @@ struct Parser {
     }
 
     mutating func pushCapture(name: String?, open: Int) throws(PatternError) {
-        guard captureCount < limits.maxCaptureGroups else { throw .limit(.captureCount) }
-        captureCount += 1
-        if let name { names[name] = captureCount }
-        frames.append(Frame(kind: .group(capture: captureCount), openOffset: offset(open), savedFlags: flags))
+        let index = try claimCapture(named: name)
+        frames.append(Frame(kind: .group(capture: index), openOffset: offset(open), savedFlags: flags))
     }
 
     private mutating func closeGroup() throws(PatternError) {
