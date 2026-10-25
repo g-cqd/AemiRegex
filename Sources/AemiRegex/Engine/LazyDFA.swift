@@ -22,11 +22,11 @@ struct LazyDFA {
     }
 
     /// Set in an entry whose state needs the slow path. The sign bit marks an unbuilt transition, so one mask tests both.
-    private static let tag: Int32 = 0x4000_0000
-    private static let tagMask: Int32 = Int32.min | 0x4000_0000
-    private static let offsetMask: Int32 = 0x3FFF_FFFF
+    static let tag: Int32 = 0x4000_0000
+    static let tagMask: Int32 = Int32.min | 0x4000_0000
+    static let offsetMask: Int32 = 0x3FFF_FFFF
 
-    private enum Flag {
+    enum Flag {
         static let match: UInt8 = 1
         static let start: UInt8 = 2
         static let dead: UInt8 = 4
@@ -34,26 +34,26 @@ struct LazyDFA {
 
     private let instructions: ContiguousArray<Instruction>
     private let sets: ContiguousArray<ByteSet>
-    private let classes: ByteClasses
+    let classes: ByteClasses
     private let anchored: Bool
     private let longest: Bool
-    private let usesContext: Bool
+    let usesContext: Bool
     private let cacheLimit: Int
     /// Whether the start states are flagged so the search consults the prefilter. A pattern without a prefilter skips that work.
     private let markStart: Bool
     /// Rows are padded to a power of two so a row offset becomes a state index with a shift.
-    private let strideShift: Int
-    private var stride: Int { 1 << strideShift }
+    let strideShift: Int
+    var stride: Int { 1 << strideShift }
 
     /// Transition entries: a state's row offset, `row << strideShift`, with ``tag`` set when the state needs the slow path
     /// (a match, a start state with a prefilter, or the dead state). A negative entry is a transition not built yet.
-    private var table: [Int32] = []
-    private var flags: [UInt8] = []
+    var table: [Int32] = []
+    var flags: [UInt8] = []
     private var keys: [[Int32]] = []
     private var index: [[Int32]: Int32] = [:]
     /// Per state and next-byte context: -1 not computed, 0 no match ends here, 1 a match ends here.
     private var finalMatches: [Int8] = []
-    private var startStates: [Int32] = []
+    var startStates: [Int32] = []
     private var bytesUsed = 0
     private var walker: EpsilonWalker
     private var live: [Int32] = []
@@ -99,146 +99,6 @@ struct LazyDFA {
         }
     }
 
-    // MARK: Searching
-
-    /// Finds the end of the leftmost-first match that starts at or after `from`.
-    /// - Complexity: O(haystack size) once the states are cached; each new state costs O(program size).
-    mutating func searchForward(_ haystack: UnsafeBufferPointer<UInt8>, from: Int, prefilter: Prefilter) -> Outcome {
-        let count = haystack.count
-        var position = from
-        var state = startStates[unsafe previousContext(haystack, at: position)]
-        var lastEnd = -1
-        while true {
-            if flags[Int(state)] & Flag.start != 0 {
-                guard let candidate = unsafe prefilter.next(in: haystack, from: position) else { break }
-                if candidate != position {
-                    position = candidate
-                    state = startStates[unsafe previousContext(haystack, at: position)]
-                }
-            }
-            guard position < count else { break }
-            var byteClass = Int(classes.map[Int(unsafe haystack[position])])
-            var next = table[Int(state) << strideShift + byteClass]
-            if next & Self.tagMask == 0 {
-                // Plain transitions in a row: leave the checked path. When the first one is already tagged (a match every few
-                // bytes) the loop's setup would be wasted, which is why one step is taken before it.
-                let (stopped, row) = unsafe scanForward(haystack, from: position, state: state)
-                position = stopped
-                state = row
-                guard position < count else { break }
-                byteClass = Int(classes.map[Int(unsafe haystack[position])])
-                next = table[Int(state) << strideShift + byteClass]
-            }
-            if next < 0 {
-                guard let built = transition(from: state, byteClass: byteClass) else { return .gaveUp }
-                next = built
-            }
-            state = (next & Self.offsetMask) >> Int32(strideShift)
-            position += 1
-            let flag = flags[Int(state)]
-            if flag & Flag.match != 0 { lastEnd = position - 1 }
-            if flag & Flag.dead != 0 { return lastEnd >= 0 ? .match(lastEnd) : .noMatch }
-        }
-        if position >= count, finalMatch(state, next: NeighborContext.edge) { lastEnd = count }
-        return lastEnd >= 0 ? .match(lastEnd) : .noMatch
-    }
-
-    /// Finds the smallest start `>= floor` of a match that ends exactly at `end`, scanning backwards over the reversed program.
-    /// - Returns: The start, or `nil` when no match ends there. `gaveUp` is set when the cache limit stopped the scan.
-    mutating func searchReverse(
-        _ haystack: UnsafeBufferPointer<UInt8>, end: Int, floor: Int, gaveUp: inout Bool
-    ) -> Int? {
-        var position = end
-        var state = startStates[end == haystack.count ? NeighborContext.edge : contextOf(unsafe haystack[end])]
-        var best: Int?
-        while position > floor {
-            var byteClass = Int(classes.map[Int(unsafe haystack[position - 1])])
-            var next = table[Int(state) << strideShift + byteClass]
-            if next & Self.tagMask == 0 {
-                let (stopped, row) = unsafe scanBackward(haystack, from: position, floor: floor, state: state)
-                position = stopped
-                state = row
-                guard position > floor else { break }
-                byteClass = Int(classes.map[Int(unsafe haystack[position - 1])])
-                next = table[Int(state) << strideShift + byteClass]
-            }
-            if next < 0 {
-                guard let built = transition(from: state, byteClass: byteClass) else {
-                    gaveUp = true
-                    return nil
-                }
-                next = built
-            }
-            let nextState = (next & Self.offsetMask) >> Int32(strideShift)
-            if flags[Int(nextState)] & Flag.match != 0 { best = position }
-            state = nextState
-            position -= 1
-            if flags[Int(state)] & Flag.dead != 0 { return best }
-        }
-        let after = floor == 0 ? NeighborContext.edge : contextOf(unsafe haystack[floor - 1])
-        if finalMatch(state, next: after) { best = floor }
-        return best
-    }
-
-    // MARK: The hot loops
-
-    /// Follows built, untagged transitions forward from `position` until the next one is tagged, unbuilt, or the text ends.
-    /// - Returns: The position of the byte whose transition needs the slow path, and the state it is taken from.
-    ///
-    /// Memory safety: this is the only unchecked indexing in the DFA. Reads are `haystack[p]` with `p < haystack.count` (the loop
-    /// guard), `classMap[byte]` with `classMap.count == 256`, and `table[row + class]` where `row` is an offset this DFA wrote
-    /// (a multiple of the stride below `table.count`) and `class < classes.count <= stride`. An untagged entry is by construction
-    /// the offset of a built row, and `table` is not mutated while this runs. Tests: golden, generated and agreement suites
-    /// (every transition), and the sanitizer runs.
-    private func scanForward(_ haystack: UnsafeBufferPointer<UInt8>, from: Int, state: Int32) -> (Int, Int32) {
-        let count = haystack.count
-        let shift = strideShift
-        return table.withUnsafeBufferPointer { table in
-            classes.map.withUnsafeBufferPointer { classMap in
-                assert(classMap.count == 256 && from >= 0 && from <= count)
-                var row = Int(state) << shift
-                var position = from
-                while position < count {
-                    let next = unsafe table[row + Int(unsafe classMap[Int(unsafe haystack[position])])]
-                    if next & Self.tagMask != 0 { break }
-                    row = Int(next)
-                    assert(row >= 0 && row + (1 << shift) <= table.count, "an untagged entry must be a built row")
-                    position += 1
-                }
-                return (position, Int32(row >> shift))
-            }
-        }
-    }
-
-    /// The backward twin of ``scanForward(_:from:state:)``: reads `haystack[position - 1]` while `position > floor`.
-    private func scanBackward(_ haystack: UnsafeBufferPointer<UInt8>, from: Int, floor: Int, state: Int32) -> (
-        Int, Int32
-    ) {
-        let shift = strideShift
-        return table.withUnsafeBufferPointer { table in
-            classes.map.withUnsafeBufferPointer { classMap in
-                assert(classMap.count == 256 && floor >= 0 && from <= haystack.count)
-                var row = Int(state) << shift
-                var position = from
-                while position > floor {
-                    let next = unsafe table[row + Int(unsafe classMap[Int(unsafe haystack[position - 1])])]
-                    if next & Self.tagMask != 0 { break }
-                    row = Int(next)
-                    assert(row >= 0 && row + (1 << shift) <= table.count, "an untagged entry must be a built row")
-                    position -= 1
-                }
-                return (position, Int32(row >> shift))
-            }
-        }
-    }
-
-    private func previousContext(_ haystack: UnsafeBufferPointer<UInt8>, at position: Int) -> Int {
-        guard usesContext, position > 0, position <= haystack.count else { return 0 }
-        return contextOf(unsafe haystack[position - 1])
-    }
-
-    private func contextOf(_ byte: UInt8) -> Int { usesContext ? NeighborContext.of(byte) : 0 }
-
     // MARK: Building states
 
     private static func header(found: Bool, matched: Bool, previous: Int) -> Int32 {
@@ -246,7 +106,7 @@ struct LazyDFA {
     }
 
     /// Whether a match ends at the position this state stands for, given what the next byte is.
-    private mutating func finalMatch(_ state: Int32, next: Int) -> Bool {
+    mutating func finalMatch(_ state: Int32, next: Int) -> Bool {
         let slot = Int(state) * 4 + (usesContext ? next : 0)
         if finalMatches[slot] < 0 {
             let key = keys[Int(state)]
@@ -280,7 +140,7 @@ struct LazyDFA {
 
     /// Builds the transition from state `state` on `byteClass`. Returns the table entry for the new state, or `nil` when the cache
     /// limit stops it.
-    private mutating func transition(from state: Int32, byteClass: Int) -> Int32? {
+    mutating func transition(from state: Int32, byteClass: Int) -> Int32? {
         let key = keys[Int(state)]
         let byte = classes.representatives[byteClass]
         let previous = Int(key[0] >> 2) & 3

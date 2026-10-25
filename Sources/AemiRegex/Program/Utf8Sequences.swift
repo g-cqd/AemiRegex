@@ -1,9 +1,3 @@
-/// A closed range of one byte.
-struct ByteRange: Equatable, Sendable {
-    var lo: UInt8
-    var hi: UInt8
-}
-
 /// Splits a range of scalar values into the byte-range sequences that match exactly the UTF-8 encodings of its members.
 enum Utf8Sequences {
     /// The sequences for `lo ... hi`, in ascending order of scalar value. Surrogates are excluded.

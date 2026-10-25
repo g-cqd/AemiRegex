@@ -1,21 +1,6 @@
 import Foundation
 import Testing
 
-/// One line of `re2-golden.jsonl`, written by `Scripts/golden/gen.go` from Go's `regexp` package.
-struct GoldenRow: Decodable {
-    let p: String
-    let h: String?
-    let all: [[Int]]?
-    let error: Bool?
-}
-
-/// All haystacks that Go ran for one valid pattern, with the answer Go gave.
-struct GoldenPattern: Sendable, CustomTestStringConvertible {
-    let pattern: String
-    let cases: [(haystack: String, all: [[Int]])]
-    var testDescription: String { "/\(pattern)/" }
-}
-
 enum GoldenFixture {
     /// Rows in file order; empty when the fixture cannot be read (a test asserts that it is not).
     static let rows: [GoldenRow] = load("re2-golden")
