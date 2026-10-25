@@ -21,6 +21,20 @@ public struct Pattern: Sendable {
             maxPatternBytes: 64 * 1024, maxNestingDepth: 250, maxProgramSize: 100_000, maxRepetition: 1000)
     }
 
+    /// The regular-expression syntax of a pattern.
+    public enum Syntax: Equatable, Sendable {
+        /// RE2's syntax (also Go's and Rust's), the default.
+        case re2
+        /// RFC 9485 (I-Regexp): a small interoperable subset, strictly checked, whose meaning is a whole-string match.
+        case iRegexp
+    }
+
+    /// Whether a match may be anywhere in the text, or must be the whole text.
+    public enum Matching: Equatable, Sendable {
+        case search
+        case wholeString
+    }
+
     /// Which engines may run. The Pike VM alone is the reference the DFA pipeline is tested against.
     enum Engine: Sendable {
         case automatic
@@ -39,9 +53,14 @@ public struct Pattern: Sendable {
         try self.init(pattern, limits: limits, engine: .automatic)
     }
 
-    init(_ pattern: String, limits: Limits = .default, engine: Engine) throws(PatternError) {
-        let program = try Parser.compile(pattern, limits: limits)
-        let plan = try Self.makePlan(pattern, program, limits: limits, engine: engine)
+    init(
+        _ pattern: String, limits: Limits = .default, engine: Engine, wholeString: Bool = false,
+        xsdCategories: Bool = false
+    ) throws(PatternError) {
+        let program = try Parser.compile(
+            pattern, limits: limits, wholeString: wholeString, xsdCategories: xsdCategories)
+        let plan = try Self.makePlan(
+            pattern, program, limits: limits, engine: engine, wholeString: wholeString, xsdCategories: xsdCategories)
         self.program = program
         self.plan = plan
         let prefilter = plan == nil ? Prefilter(.none) : Prefilter(analyzing: program)
@@ -64,11 +83,33 @@ public struct Pattern: Sendable {
     }
 
     private static func makePlan(
-        _ pattern: String, _ program: Program, limits: Limits, engine: Engine
+        _ pattern: String, _ program: Program, limits: Limits, engine: Engine, wholeString: Bool, xsdCategories: Bool
     ) throws(PatternError) -> DFAPlan? {
         guard engine == .automatic else { return nil }
-        let reverse = try Parser.compile(pattern, limits: limits, reverse: true)
+        let reverse = try Parser.compile(
+            pattern, limits: limits, reverse: true, wholeString: wholeString, xsdCategories: xsdCategories)
         return DFAPlan(reverse: reverse, forwardClasses: ByteClasses(program), reverseClasses: ByteClasses(reverse))
+    }
+
+    /// Compiles `pattern` in `syntax`.
+    ///
+    /// - Parameters:
+    ///   - pattern: The pattern text.
+    ///   - syntax: The dialect the pattern is written in.
+    ///   - matching: `.wholeString` requires a match to be the entire text; `.search` finds one anywhere. The default is the dialect's:
+    ///     whole-string for I-Regexp, search for RE2.
+    ///   - limits: What the pattern may cost.
+    /// - Throws: ``PatternError``, with the offset in `pattern` as written.
+    public init(_ pattern: String, syntax: Syntax, matching: Matching? = nil, limits: Limits = .default)
+        throws(PatternError)
+    {
+        let source: String
+        switch syntax {
+            case .re2: source = pattern
+            case .iRegexp: source = try IRegexp.translate(pattern, limits: limits)
+        }
+        let whole = (matching ?? (syntax == .iRegexp ? .wholeString : .search)) == .wholeString
+        try self.init(source, limits: limits, engine: .automatic, wholeString: whole, xsdCategories: syntax == .iRegexp)
     }
 
     /// The number of capture groups, not counting the whole match.

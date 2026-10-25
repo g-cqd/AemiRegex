@@ -23,6 +23,8 @@ public enum PatternError: Error, Equatable, Sendable {
         case unknownClassName
         case invalidScalar
         case unsupported
+        /// A character that the dialect does not allow where it appears.
+        case invalidCharacter
     }
 
     /// Which limit a pattern exceeded.

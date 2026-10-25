@@ -57,5 +57,6 @@ Atomic and buildable. The message states why. Never mix a refactor and a behavio
 ## Current state
 
 Phases and their order are in `docs/roadmap/`; read an entry's `status:` and `blocked-by:` before starting it. The order the owner set is
-I-Regexp (0004), then Unicode (0005), then the Rust gap (0006); ECMAScript, PCRE2 and the budgeted backtracking engine follow Unicode.
-Not built: Unicode classes, a `String` API, the other dialects, a first CI run (the workflow was written locally and never executed).
+I-Regexp (0004, done), then Unicode (0005), then the Rust gap (0006); ECMAScript, PCRE2 and the budgeted backtracking engine follow Unicode.
+Built: RE2 syntax, I-Regexp with whole-string matching, `\p` over general categories (interim source, ADR-0008). Not built: scripts and case
+folding, a `String` API, ECMAScript, PCRE2, the backtracking engine, a first CI run (the workflow was written locally and never executed).

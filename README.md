@@ -7,8 +7,8 @@ No backtracking, so no pattern can make a search exponential. Zero package depen
 and one machine it is faster than `NSRegularExpression`, Swift `Regex` and Go's `regexp`, and **slower than Rust's `regex` crate on every
 per-file workload** (median 2.2x) and than PCRE2 with JIT on most (median 2.2x; it wins five of 14 rows). It is not the fastest engine and
 does not claim to be; see `docs/research/engine-comparison-2026-10.md` for the numbers, the causes, the safety nets and the work queue. A
-small C target (NEON, SSSE3, scalar) holds the multi-literal prefilter kernel. Unicode classes, a `String` API and the other dialects
-(I-Regexp, ECMAScript, PCRE2) are not built yet.
+small C target (NEON, SSSE3, scalar) holds the multi-literal prefilter kernel. I-Regexp (RFC 9485) is built, whole-string by default;
+`\p{…}` works over general categories. Scripts, Unicode case folding, a `String` API, ECMAScript and PCRE2 are not built yet.
 
 ```swift
 import AemiRegex
@@ -20,6 +20,14 @@ if let match = pattern.firstMatch(in: haystack) {
     match.groups[pattern.groupIndex(named: "name") ?? 0]   // 5 ..< 8
 }
 let all = pattern.matches(in: haystack)
+```
+
+```swift
+// I-Regexp (RFC 9485): strictly checked, and a match is the whole string, as the RFC defines it.
+let username = try Pattern(#"[a-z][a-z0-9_]*"#, syntax: .iRegexp)
+username.firstMatch(in: Array("alice_1".utf8)) != nil      // true
+username.firstMatch(in: Array("Alice".utf8)) != nil        // false
+try Pattern(#"\d+"#, syntax: .iRegexp)                     // throws: \d is not in I-Regexp, with the offset
 ```
 
 Not supported, by design: backreferences, lookaround, atomic groups, possessive quantifiers. A pattern that uses them throws

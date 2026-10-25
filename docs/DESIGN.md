@@ -28,6 +28,14 @@ budget: there is no backtracking, so no pattern can make a search exponential. T
 - **Iteration** (`matches(in:)`): an empty match that abuts the previous match is skipped, and the position advances one scalar.
   Probed against Go: `a*` on `baaac` gives `[0,0] [1,4] [5,5]`.
 
+## Dialects
+
+A dialect is a front end over the same program and engines. **RE2** is parsed directly. **I-Regexp** (`Syntax/IRegexp.swift`) is checked
+against the RFC's grammar and translated to RE2 text in one pass, then parsed by the RE2 parser with two switches: general categories read
+as XSD does (`C` and `Cn` include unassigned code points), and `wholeString`, which puts `\A` and `\z` around the finished alternation in
+the program, not in the text, so a pattern such as an unterminated `\Q` cannot swallow them. Errors carry offsets in the text the caller
+wrote, because the translator makes every check it can before the RE2 parser sees anything; what the parser can still reject is a limit.
+
 ## How a search runs
 
 1. The prefilter jumps to the next position a match could start, while the forward DFA is in its start state.

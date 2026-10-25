@@ -6,6 +6,10 @@ struct Parser {
     let limits: Pattern.Limits
     /// Builds the program for the reversed pattern (atoms in reverse order, UTF-8 sequences reversed), used to find match starts.
     let reverse: Bool
+    /// The whole program must match the entire text: anchors are added around the finished alternation, not written into the text.
+    let wholeString: Bool
+    /// General categories as XML Schema defines them (I-Regexp), not as RE2 does.
+    let xsdCategories: Bool
     var position = 0
     var flags = Flags()
     var frames: [Frame]
@@ -15,28 +19,24 @@ struct Parser {
     /// Instructions emitted so far, counted conservatively, to enforce ``Pattern/Limits/maxProgramSize``.
     var emitted = 0
 
-    private init(_ pattern: String, limits: Pattern.Limits, reverse: Bool) {
-        var scalars: [UInt32] = []
-        var offsets: [Int] = []
-        var offset = 0
-        for scalar in pattern.unicodeScalars {
-            scalars.append(scalar.value)
-            offsets.append(offset)
-            offset += scalar.utf8.count
-        }
-        offsets.append(offset)
-        self.scalars = scalars
-        self.offsets = offsets
+    private init(_ pattern: String, limits: Pattern.Limits, reverse: Bool, wholeString: Bool, xsdCategories: Bool) {
+        let text = PatternText(pattern)
+        scalars = text.scalars
+        offsets = text.offsets
         self.limits = limits
         self.reverse = reverse
+        self.wholeString = wholeString
+        self.xsdCategories = xsdCategories
         frames = [Frame(kind: .root, openOffset: 0, savedFlags: Flags())]
     }
 
-    static func compile(_ pattern: String, limits: Pattern.Limits, reverse: Bool = false) throws(PatternError)
-        -> Program
-    {
+    static func compile(
+        _ pattern: String, limits: Pattern.Limits, reverse: Bool = false, wholeString: Bool = false,
+        xsdCategories: Bool = false
+    ) throws(PatternError) -> Program {
         guard pattern.utf8.count <= limits.maxPatternBytes else { throw .limit(.patternLength) }
-        var parser = Parser(pattern, limits: limits, reverse: reverse)
+        var parser = Parser(
+            pattern, limits: limits, reverse: reverse, wholeString: wholeString, xsdCategories: xsdCategories)
         return try parser.parse()
     }
 
@@ -57,7 +57,14 @@ struct Parser {
         guard frames.count == 1 else { throw .syntax(.unmatchedOpenParen, offset: top.openOffset) }
         emitted += 2 * top.branches.count
         try checkSize()
-        var instructions = ContiguousArray(top.finished(reversed: reverse).code)
+        var code = top.finished(reversed: reverse).code
+        if wholeString {
+            // The same text order in both directions: the first instruction is the edge where the scan starts, the last the edge where it ends.
+            code = [.assertion(.beginText)] + code + [.assertion(.endText)]
+            emitted += 2
+            try checkSize()
+        }
+        var instructions = ContiguousArray(code)
         instructions.append(.match)
         guard instructions.count * 2 * (captureCount + 1) <= limits.maxThreadTableEntries else {
             throw .limit(.programSize)

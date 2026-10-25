@@ -7,7 +7,7 @@ struct GoldenTests {
     @Test func `the golden fixture is present and complete`() {
         #expect(GoldenFixture.validPatterns.count >= 100)
         #expect(GoldenFixture.invalidPatterns.count >= 30)
-        #expect(GoldenFixture.rows.count == 2401)
+        #expect(GoldenFixture.rows.count == 2885)
     }
 
     @Test(arguments: GoldenFixture.validPatterns)
