@@ -28,7 +28,8 @@ extension BTParser {
     }
 
     mutating func push(_ kind: BTFrame.Kind, open: Int) {
-        frames.append(BTFrame(kind: kind, openOffset: offset(open), savedFlags: flags))
+        frames.append(BTFrame(id: nextFrameId, kind: kind, openOffset: offset(open), savedFlags: flags))
+        nextFrameId += 1
     }
 
     mutating func pushCapture(name: String?, open: Int) throws(PatternError) {
@@ -39,25 +40,34 @@ extension BTParser {
     mutating func closeGroup() throws(PatternError) {
         guard frames.count > 1 else { throw .syntax(.unmatchedCloseParen, offset: offset(position)) }
         let frame = frames.removeLast()
-        var body = try finishBranches(of: frame)
-        let node: Int
-        switch frame.kind {
-            case .group(let capture?):
-                node = try newNode(.group(capture: capture), children: [body])
-            case .group(nil), .root:
-                // An assertion inside plain parentheses must stay a group, so that ECMAScript still refuses to repeat the group's body.
-                if isAssertionLike(body) { body = try newNode(.concatenation, children: [body]) }
-                node = body
-            case .look(let behind, let negative):
-                node = try newNode(.look(behind: behind, negative: negative), children: [body])
-            case .atomic:
-                node = try newNode(.atomic, children: [body])
-        }
+        let node = try finishedNode(of: frame)
         if frame.resetStart != nil { captureCount = max(frame.resetHighest, captureCount) }
         flags = frame.savedFlags
-        top.items.append(node)
+        if case .look = frame.kind, top.kind == .conditional, top.condition == .lookaround, top.conditionNode == nil {
+            top.conditionNode = node  // the test of a conditional is not one of its branches
+        } else {
+            top.items.append(node)
+        }
         top.lastIsQuantified = false
         position += 1
+    }
+
+    /// The node for a group that has just closed.
+    private mutating func finishedNode(of frame: BTFrame) throws(PatternError) -> Int {
+        if frame.kind == .conditional { return try conditionalNode(of: frame) }
+        var body = try finishBranches(of: frame)
+        switch frame.kind {
+            case .group(let capture?):
+                return try newNode(.group(capture: capture), children: [body])
+            case .look(let behind, let negative):
+                return try newNode(.look(behind: behind, negative: negative), children: [body])
+            case .atomic:
+                return try newNode(.atomic, children: [body])
+            default:
+                // An assertion inside plain parentheses must stay a group, so that ECMAScript still refuses to repeat the group's body.
+                if isAssertionLike(body) { body = try newNode(.concatenation, children: [body]) }
+                return body
+        }
     }
 
     /// Parses what follows `(?`.
@@ -84,6 +94,8 @@ extension BTParser {
             case 0x50 where !isECMAScript:
                 if peek(3) == 0x3D {
                     try addNamedReference(from: position + 4, close: 0x29, at: question)
+                } else if peek(3) == 0x3E {
+                    try addNamedCall(from: position + 4, close: 0x29, at: question)
                 } else {
                     guard peek(3) == 0x3C else { throw .syntax(.unsupported, offset: question) }
                     try openNamed(nameStart: position + 4, close: 0x3E, open: open)
@@ -99,6 +111,13 @@ extension BTParser {
                 push(.group(capture: nil), open: open)
                 top.resetStart = captureCount
                 position += 3
+            case 0x28 where !isECMAScript:
+                try openConditional(open: open)
+            case 0x52 where !isECMAScript, 0x26 where !isECMAScript, 0x30 ... 0x39 where !isECMAScript,
+                0x2B where !isECMAScript:
+                try parseCall(at: question)
+            case 0x2D where !isECMAScript && peek(3).map({ (0x30 ... 0x39).contains($0) }) == true:
+                try parseCall(at: question)
             case 0x7C, 0x28, 0x52, 0x26, 0x30 ... 0x39, 0x2B, 0x43:
                 throw .syntax(.unsupported, offset: question)
             default:
@@ -110,11 +129,28 @@ extension BTParser {
         let parsed = try name(from: nameStart, until: close) { isNameScalar($0, first: $1) }
         // A branch reset may reuse a name for the same number in another branch.
         let sameNumber = names[parsed.name] == captureCount + 1
-        guard names[parsed.name] == nil || sameNumber else {
+        let path = frames.flatMap { [$0.id, $0.branches.count] }
+        let inOtherBranch = isECMAScript && (namePaths[parsed.name] ?? []).allSatisfy { Self.differ($0, path) }
+        guard names[parsed.name] == nil || sameNumber || inOtherBranch else {
             throw .syntax(.duplicateGroupName, offset: offset(nameStart))
         }
         try pushCapture(name: parsed.name, open: open)
+        namePaths[parsed.name, default: []].append(path)
+        if !(groupsByName[parsed.name]?.contains(captureCount) ?? false) {
+            groupsByName[parsed.name, default: []].append(captureCount)
+        }
         position = parsed.end + 1
+    }
+
+    /// Whether two groups' paths hold them in different branches of some shared group, so they can never both take part in a match.
+    private static func differ(_ a: [Int], _ b: [Int]) -> Bool {
+        var index = 0
+        while index + 1 < a.count, index + 1 < b.count {
+            if a[index] != b[index] { return false }
+            if a[index + 1] != b[index + 1] { return true }
+            index += 2
+        }
+        return false
     }
 
     func isNameScalar(_ c: UInt32, first: Bool) -> Bool {

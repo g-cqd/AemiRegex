@@ -9,4 +9,7 @@ enum BTAssertion: Int32, Sendable {
     case endLine
     case wordBoundary
     case notWordBoundary
+    /// ECMAScript with `i` and `u`: the word characters include U+017F and U+212A, which fold to `s` and `k`.
+    case wordBoundaryFolded
+    case notWordBoundaryFolded
 }

@@ -17,10 +17,13 @@ atomic groups, possessive quantifiers, recursion and conditionals need roadmap 0
 
 Agreement with `pcre2test` on a stated corpus, with the linear subset and the rest separated and every divergence listed.
 
-## State (2026-10-25)
+## State (2026-10-25, later)
 
 Built on `BacktrackingPattern`: `i m s x n` flags, atomic groups, possessive quantifiers, lookahead, lookbehind read forward with each branch tried
-from the farthest start (as PCRE2 10.43+ does, up to 255 characters), branch reset `(?|`, `\A \z \Z \K \R \h \H \v \V \N \Q…\E`, `\g`,
-`\k`, `(?P<n>)`, `(?P=n)`, `(?'n')`, POSIX classes, `{,m}`, spaces in `{ n }`, octal and `\o{}`, `\x{…}`, `\N{U+…}`, `(*FAIL)`, comments, and PCRE2's global
-matching. Agrees with `libpcre2` 10.49 on the generated and curated corpora. **Open:** recursion and subroutine calls (`(?R)`, `(?1)`, `(?&n)`),
-conditionals, the other verbs, `\G`, `\X`, callouts, UCP mode, the `J` flag, `xx`, binary properties. Status stays `in-progress`.
+from the farthest start (as PCRE2 10.43+ does, up to 255 characters), branch reset `(?|`, **subroutine calls and recursion** (`(?R)`, `(?1)`, `(?-1)`, `(?+1)`,
+`(?&n)`, `(?P>n)`, `\g<n>`), **conditionals** (`(?(1)…)`, `(?(<n>)…)`, `(?(R)…)`, `(?(R1)…)`, `(?(DEFINE)…)`, look-around tests), `\A \z \Z \K \R \h \H \v \V \N \Q…\E`, `\g`, `\k`, `(?P<n>)`,
+`(?P=n)`, `(?'n')`, POSIX classes, `{,m}`, spaces in `{ n }`, octal and `\o{}`, `\x{…}`, `\N{U+…}`, `(*FAIL)`, comments, `\p{…}` with loose names, binary properties,
+scripts and Script_Extensions (ADR-0012), and PCRE2's global matching. Agrees with `libpcre2` 10.49 on the generated and curated corpora (the soak runs
+58,000 conditional- and recursion-heavy cases with no mismatch). A recursion that cannot make progress fails its path; nesting deeper than
+`Budget.maxRecursionDepth` (250) throws `.budgetExceeded(.recursion)`. **Open:** the other verbs (`(*ACCEPT)`, `(*COMMIT)`…), `\G`, `\X`, callouts, UCP mode, the `J` flag, `xx`, `\p{Bidi_Class=…}`,
+`(?(R&name)…)`. Status stays `in-progress`.

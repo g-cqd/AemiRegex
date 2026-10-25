@@ -35,8 +35,11 @@ const atoms = [
   { text: '\\b', atom: false, len: 0 }, { text: '\\B', atom: false, len: 0 },
   { text: '^', atom: false, len: 0 }, { text: '$', atom: false, len: 0 },
 ];
+atoms.push(atom('\\p{Alphabetic}'), atom('\\P{Lowercase}'), atom('\\p{Emoji}'));
+if (pcre) atoms.push(atom('\\p{Greek}'), atom('\\p{Xan}'), atom('\\p{Common}'));
+if (!pcre) atoms.push(atom('\\p{scx=Latin}'), atom('\\p{Script=Greek}'), atom('\\p{ID_Start}'));
 if (pcre) atoms.push({ text: '\\A', atom: false, len: 0 }, { text: '\\z', atom: false, len: 0 }, { text: '\\Z', atom: false, len: 0 });
-if (pcre) atoms.push(atom('\\h'), atom('\\R', null), atom('\\N'));
+if (pcre) atoms.push(atom('\\h'), atom('\\R', null), atom('\\N'), atom('@G@', null));
 
 const wrap = (e) => (e.atom ? e.text : `(?:${e.text})`);
 const sum = (a, b) => (a === null || b === null ? null : a + b);
@@ -56,6 +59,13 @@ const makers = [
   (pool) => { const a = pick(pool.filter((e) => !pcre || e.len !== null)); return a ? { text: `(?<!${a.text})`, atom: false, len: 0 } : pick(pool); },
 ];
 if (pcre) makers.push((pool) => { const a = pick(pool); return { text: `(?>${a.text})`, atom: true, len: null }; });
+if (pcre) {
+  // Conditionals on a group number, on a look-around, and on being inside a call.
+  makers.push((pool) => { const a = pick(pool), b = pick(pool); return { text: `(?(@C@)${a.text}|${b.text})`, atom: true, len: null }; });
+  makers.push((pool) => { const a = pick(pool); return { text: `(?(@C@)${a.text})`, atom: true, len: null }; });
+  makers.push((pool) => { const a = pick(pool), b = pick(pool), c = pick(pool); return { text: `(?(?=${a.text})${b.text}|${c.text})`, atom: true, len: null }; });
+  makers.push((pool) => { const a = pick(pool), b = pick(pool); return { text: `(?(R)${a.text}|${b.text})`, atom: true, len: null }; });
+}
 
 function buildPattern() {
   const pool = atoms.slice();
@@ -73,6 +83,8 @@ function buildPattern() {
     if (text[i] === '[') { while (i < text.length && text[i] !== ']') { if (text[i] === '\\') i++; i++; } continue; }
     if (text[i] === '(' && text[i + 1] !== '?') groups++;
   }
+  text = text.replace(/@C@/g, () => (groups > 0 ? String(1 + Math.floor(rand() * groups)) : 'R'));
+  text = text.replace(/@G@/g, () => (groups > 0 && chance(0.8) ? `(?${1 + Math.floor(rand() * groups)})` : '(?R)'));
   text = text.replace(/@R@/g, () => (groups > 0 ? `\\${1 + Math.floor(rand() * groups)}` : 'a'));
   return text;
 }

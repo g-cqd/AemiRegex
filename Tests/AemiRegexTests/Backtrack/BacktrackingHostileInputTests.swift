@@ -84,4 +84,27 @@ struct BacktrackingHostileInputTests {
         let text = Array(String(repeating: "a", count: 1_000_000).utf8) + [0x79]
         #expect(try pattern.firstMatch(in: text)?.range == 0 ..< 1_000_001)
     }
+
+    @Test func `recursion deeper than the budget ends in budgetExceeded, and a larger budget allows it`() throws {
+        let balanced = #"^(\((?:[^()]|(?1))*\))$"#
+        let text = Array((String(repeating: "(", count: 300) + String(repeating: ")", count: 300)).utf8)
+        let shallow = try BacktrackingPattern(balanced, dialect: .pcre2)
+        #expect(throws: BacktrackError.budgetExceeded(.recursion)) { try shallow.firstMatch(in: text) }
+        let budget = BacktrackingPattern.Budget(maxSteps: 10_000_000, maxStackEntries: 1 << 20, maxRecursionDepth: 400)
+        let deep = try BacktrackingPattern(balanced, dialect: .pcre2, budget: budget)
+        #expect(try deep.firstMatch(in: text)?.range == 0 ..< 600)
+    }
+
+    @Test func `a recursion that cannot make progress fails the path instead of looping`() throws {
+        let pattern = try BacktrackingPattern("(?R)a|b", dialect: .pcre2)
+        #expect(try pattern.firstMatch(in: Array("ab".utf8))?.range == 1 ..< 2)
+        let left = try BacktrackingPattern("(a|(?1)b)", dialect: .pcre2)
+        #expect(try left.firstMatch(in: Array("ab".utf8))?.range == 0 ..< 1)
+    }
+
+    @Test func `calls and conditionals are PCRE2 only`() {
+        for pattern in ["(a)(?1)", "(?R)", "(a)?(?(1)b|c)", #"(a)\g<1>"#] {
+            #expect(throws: PatternError.self) { try BacktrackingPattern(pattern, dialect: .ecmaScript) }
+        }
+    }
 }

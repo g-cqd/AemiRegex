@@ -2,4 +2,6 @@
 enum BTEscaped: Equatable {
     case scalar(UInt32)
     case set(ScalarSet)
+    /// A set that case-insensitive matching does not widen: PCRE2's `\p{Greek}` is the same under `i`.
+    case fixedSet(ScalarSet)
 }

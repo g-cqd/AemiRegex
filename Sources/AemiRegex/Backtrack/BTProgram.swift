@@ -6,6 +6,7 @@ struct BTProgram: Sendable {
     /// Loop registers, stored after the capture slots.
     var registerCount: Int
     var dialect: BacktrackingPattern.Dialect
+    var names: [String: [Int]]
 
     /// Two slots for each group including group 0, then the loop registers.
     var slotCount: Int { 2 * (captureCount + 1) + registerCount }

@@ -5,7 +5,13 @@ extension BTParser {
         guard let c = peek(1) else { throw .syntax(.unexpectedEnd, offset: offset(scalars.count)) }
         switch c {
             case 0x62, 0x42:
-                try add(.assertion(c == 0x62 ? .wordBoundary : .notWordBoundary))
+                let folded = isECMAScript && flags.ignoreCase
+                switch (c == 0x62, folded) {
+                    case (true, false): try add(.assertion(.wordBoundary))
+                    case (false, false): try add(.assertion(.notWordBoundary))
+                    case (true, true): try add(.assertion(.wordBoundaryFolded))
+                    case (false, true): try add(.assertion(.notWordBoundaryFolded))
+                }
                 position += 2
             case 0x41 where !isECMAScript:
                 try add(.assertion(.beginText))
@@ -43,16 +49,24 @@ extension BTParser {
             default:
                 switch try parseCharacterEscape(inClass: false) {
                     case .scalar(let scalar): try addLiteral(scalar)
-                    case .set(let set): try addSet(set)
+                    case .set(let set), .fixedSet(let set): try addSet(set)
                 }
         }
     }
 
     /// Adds a back reference to the group called by the name that starts at `start` and ends at `close`.
     mutating func addNamedReference(from start: Int, close: UInt32, at: Int) throws(PatternError) {
+        let ignoreCase = flags.ignoreCase
+        try addNamedUse(from: start, close: close, at: at) { .namedBackReference(name: $0, ignoreCase: ignoreCase) }
+    }
+
+    /// Reads a group name from `start` to `close`, records that the pattern must have such a group, and adds the node `make` builds for it.
+    mutating func addNamedUse(
+        from start: Int, close: UInt32, at: Int, _ make: (String) -> BTNode.Kind
+    ) throws(PatternError) {
         let parsed = try name(from: start, until: close) { isNameScalar($0, first: $1) }
         pendingNames.append((parsed.name, at))
-        try add(.namedBackReference(name: parsed.name, ignoreCase: flags.ignoreCase))
+        try add(make(parsed.name))
         position = parsed.end + 1
     }
 
@@ -113,6 +127,16 @@ extension BTParser {
                 try reference(group: group, at: at)
             } else {
                 try addNamedReference(from: position + 3, close: 0x7D, at: at)
+            }
+            return
+        }
+        if next == 0x3C || next == 0x27 {
+            let close: UInt32 = next == 0x3C ? 0x3E : 0x27
+            let first = peek(3) ?? 0
+            if (0x30 ... 0x39).contains(first) || first == 0x2B || first == 0x2D {
+                try addNumberedCall(from: position + 3, close: close, at: at)
+            } else {
+                try addNamedCall(from: position + 3, close: close, at: at)
             }
             return
         }

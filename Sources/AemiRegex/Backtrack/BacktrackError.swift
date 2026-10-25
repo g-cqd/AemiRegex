@@ -9,5 +9,7 @@ public enum BacktrackError: Error, Equatable, Sendable {
         case steps
         /// ``BacktrackingPattern/Budget/maxStackEntries`` choice points and undo records were held at once.
         case stack
+        /// Subroutine calls nested deeper than ``BacktrackingPattern/Budget/maxRecursionDepth``.
+        case recursion
     }
 }

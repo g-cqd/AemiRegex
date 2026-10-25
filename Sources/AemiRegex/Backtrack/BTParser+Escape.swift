@@ -33,7 +33,7 @@ extension BTParser {
                 guard peek() == 0x7B else { throw .syntax(.invalidEscape, offset: at) }
                 position += 1
                 return .scalar(try braced(radix: 8, allowSurrogates: true, at: at))
-            case 0x70, 0x50: return .set(try propertyEscape(negated: c == 0x50, at: at))
+            case 0x70, 0x50: return try propertyEscape(negated: c == 0x50, at: at)
             default: return .scalar(try identityEscape(c, inClass: inClass, at: at))
         }
     }

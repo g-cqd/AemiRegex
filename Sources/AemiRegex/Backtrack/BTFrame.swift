@@ -6,8 +6,12 @@ struct BTFrame {
         case group(capture: Int?)
         case look(behind: Bool, negative: Bool)
         case atomic
+        /// PCRE2 `(?(condition)yes|no)`.
+        case conditional
     }
 
+    /// Distinguishes this group from every other, so a name can be told to be in different alternatives (see ``BTParser``).
+    var id = 0
     var kind: Kind
     /// Byte offset of the opening parenthesis, for errors.
     var openOffset: Int
@@ -21,4 +25,7 @@ struct BTFrame {
     /// its groups from the start.
     var resetStart: Int?
     var resetHighest = 0
+    /// For a conditional: what it tests, and for a look-around condition the node of the look-around once it has closed.
+    var condition: BTCondition?
+    var conditionNode: Int?
 }

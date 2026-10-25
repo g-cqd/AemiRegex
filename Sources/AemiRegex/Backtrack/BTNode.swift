@@ -19,6 +19,11 @@ struct BTNode: Sendable {
         case atomic
         /// `(*FAIL)`: never matches.
         case fail
+        /// A subroutine call to a group (0 is the whole pattern), or to a named group.
+        case call(group: Int)
+        case namedCall(name: String)
+        /// `(?(condition)yes|no)`. Children: the look-around of a ``BTCondition/lookaround`` condition if any, then `yes`, then `no`.
+        case conditional(BTCondition)
         /// `\K`: the match starts here.
         case keep
     }

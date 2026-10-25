@@ -18,10 +18,13 @@ public struct BacktrackingPattern: Sendable {
         public var maxSteps: Int
         /// The most choice points and undo records one call may hold at once; 24 bytes each.
         public var maxStackEntries: Int
+        /// The deepest nesting of subroutine calls and recursion (PCRE2 `(?1)`, `(?R)`); each level keeps a copy of the capture slots.
+        public var maxRecursionDepth: Int
 
-        public init(maxSteps: Int, maxStackEntries: Int) {
+        public init(maxSteps: Int, maxStackEntries: Int, maxRecursionDepth: Int = 250) {
             self.maxSteps = maxSteps
             self.maxStackEntries = maxStackEntries
+            self.maxRecursionDepth = maxRecursionDepth
         }
 
         public static let `default` = Budget(maxSteps: 10_000_000, maxStackEntries: 1 << 20)
@@ -50,6 +53,12 @@ public struct BacktrackingPattern: Sendable {
 
     /// The number of capture groups, not counting the whole match.
     public var captureCount: Int { program.captureCount }
+
+    /// The index of the first group named `name`, or `nil` when there is none.
+    public func groupIndex(named name: String) -> Int? { program.names[name]?.first }
+
+    /// The indices of every group named `name`: more than one only in ECMAScript, where a name may repeat in different alternatives.
+    public func groupIndices(named name: String) -> [Int] { program.names[name] ?? [] }
 
     /// The leftmost match that starts at or after byte offset `start`, or `nil`.
     ///

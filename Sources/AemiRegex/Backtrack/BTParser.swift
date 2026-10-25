@@ -9,9 +9,14 @@ struct BTParser: PatternCursor {
     var flags = BTFlags()
     var nodes: [BTNode] = []
     var sets: [CharSet] = []
-    var frames: [BTFrame] = [BTFrame(kind: .root, openOffset: 0, savedFlags: BTFlags())]
+    var frames: [BTFrame] = [BTFrame(id: 0, kind: .root, openOffset: 0, savedFlags: BTFlags())]
     var captureCount = 0
     var names: [String: Int] = [:]
+    /// Where each group with a name sits: per group, the (frame, branch) pairs from the root. ECMAScript allows a name twice only when
+    /// some frame holds the two groups in different branches.
+    var namePaths: [String: [[Int]]] = [:]
+    var groupsByName: [String: [Int]] = [:]
+    var nextFrameId = 1
     /// Back references to check once the group count is known.
     var pendingGroups: [(group: Int, offset: Int)] = []
     var pendingNames: [(name: String, offset: Int)] = []
@@ -58,10 +63,10 @@ struct BTParser: PatternCursor {
         for reference in pendingGroups where reference.group > captureCount {
             throw .syntax(.invalidEscape, offset: reference.offset)
         }
-        for reference in pendingNames where names[reference.name] == nil {
+        for reference in pendingNames where groupsByName[reference.name] == nil {
             throw .syntax(.invalidGroupName, offset: reference.offset)
         }
-        return BTSyntaxTree(nodes: nodes, root: root, sets: sets, captureCount: captureCount, names: names)
+        return BTSyntaxTree(nodes: nodes, root: root, sets: sets, captureCount: captureCount, names: groupsByName)
     }
 
     private mutating func step() throws(PatternError) {

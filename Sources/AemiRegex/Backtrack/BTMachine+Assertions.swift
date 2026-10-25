@@ -20,16 +20,26 @@ extension BTMachine {
                 return lineTerminators.contains(after.value)
             case .wordBoundary: return isWord(before: pos, in: bytes) != isWord(after: pos, in: bytes)
             case .notWordBoundary: return isWord(before: pos, in: bytes) == isWord(after: pos, in: bytes)
+            case .wordBoundaryFolded:
+                return isWord(before: pos, in: bytes, folded: true) != isWord(after: pos, in: bytes, folded: true)
+            case .notWordBoundaryFolded:
+                return isWord(before: pos, in: bytes, folded: true) == isWord(after: pos, in: bytes, folded: true)
         }
     }
 
-    private func isWord(before pos: Int, in bytes: ByteBuffer) -> Bool {
-        pos > 0 && Self.isWordByte(bytes[pos - 1])
+    private func isWord(before pos: Int, in bytes: ByteBuffer, folded: Bool = false) -> Bool {
+        guard pos > 0 else { return false }
+        if Self.isWordByte(bytes[pos - 1]) { return true }
+        return folded && ScalarReader.scalar(in: bytes, before: pos).map { Self.isFoldedWord($0.value) } == true
     }
 
-    private func isWord(after pos: Int, in bytes: ByteBuffer) -> Bool {
-        pos < bytes.count && Self.isWordByte(bytes[pos])
+    private func isWord(after pos: Int, in bytes: ByteBuffer, folded: Bool = false) -> Bool {
+        guard pos < bytes.count else { return false }
+        if Self.isWordByte(bytes[pos]) { return true }
+        return folded && ScalarReader.scalar(in: bytes, at: pos).map { Self.isFoldedWord($0.value) } == true
     }
+
+    private static func isFoldedWord(_ scalar: UInt32) -> Bool { scalar == 0x17F || scalar == 0x212A }
 
     private static func isWordByte(_ byte: UInt8) -> Bool {
         (0x30 ... 0x39).contains(byte) || (0x41 ... 0x5A).contains(byte) || (0x61 ... 0x7A).contains(byte)

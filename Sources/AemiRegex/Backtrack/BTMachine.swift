@@ -10,6 +10,9 @@ struct BTMachine {
     var steps = 0
     /// A match that is empty and sits here is refused, so the search goes on (PCRE2's `NOTEMPTY_ATSTART`).
     var forbiddenEmpty: Int?
+    /// The subroutine calls made so far in this run, and the innermost one still open (-1 when none).
+    var callFrames: [BTCallFrame] = []
+    var currentFrame = -1
     let lineTerminators: ScalarSet
 
     init(_ program: BTProgram, budget: BacktrackingPattern.Budget) {
@@ -56,6 +59,8 @@ struct BTMachine {
         for index in slots.indices { slots[index] = -1 }
         stack.removeAll(keepingCapacity: true)
         marks.removeAll(keepingCapacity: true)
+        callFrames.removeAll(keepingCapacity: true)
+        currentFrame = -1
         slots[0] = start
         var pc = 0
         var pos = start
@@ -70,7 +75,7 @@ struct BTMachine {
         }
     }
 
-    private enum Step {
+    enum Step {
         case next
         case failed
         case matched
@@ -93,37 +98,12 @@ struct BTMachine {
             case .save, .setRegister:
                 try write(slot: Int(instruction.x), pos)
                 pc += 1
+                if instruction.y == 1, let back = try returnFromCall(group: Int(instruction.x) / 2) { pc = back }
             case .assertion:
                 ok = holds(BTAssertion(rawValue: instruction.x) ?? .beginText, in: bytes, at: pos)
                 pc += 1
             case .backReference:
                 ok = try reference(instruction, in: bytes, at: &pos)
-                pc += 1
-            case .lookStart:
-                marks.append(stack.count)
-                if instruction.x == 1 {
-                    try push(.lookNegative, pc + Int(instruction.y), pos)
-                } else {
-                    try push(.lookPositive, 0, pos)
-                }
-                pc += 1
-            case .lookEnd:
-                guard let mark = marks.popLast() else { return .failed }
-                if instruction.x == 1 {
-                    undo(to: mark)
-                    ok = false
-                } else {
-                    pos = stack[mark].b
-                    close(mark)
-                    pc += 1
-                }
-            case .atomicStart:
-                marks.append(stack.count)
-                try push(.atomicOpen, 0, pos)
-                pc += 1
-            case .atomicEnd:
-                guard let mark = marks.popLast() else { return .failed }
-                close(mark)
                 pc += 1
             case .emptyCheck:
                 if pos == slots[Int(instruction.x)] {
@@ -151,72 +131,19 @@ struct BTMachine {
                 pc += 1
             case .fail:
                 ok = false
+            case .call, .condGroup, .condRecursion, .lookStart, .lookEnd, .atomicStart, .atomicEnd:
+                return try executeStructure(instruction, pc: &pc, pos: &pos)
             case .match:
-                guard let forbidden = forbiddenEmpty, pos == forbidden, slots[0] == pos else {
+                if let back = try returnFromCall(group: 0) {
+                    pc = back
+                } else if let forbidden = forbiddenEmpty, pos == forbidden, slots[0] == pos {
+                    ok = false
+                } else {
                     slots[1] = pos
                     return .matched
                 }
-                ok = false
         }
         return ok ? .next : .failed
-    }
-
-    // MARK: Stack
-
-    private mutating func push(_ tag: BTEntry.Tag, _ a: Int, _ b: Int) throws(BacktrackError) {
-        guard stack.count < budget.maxStackEntries else { throw .budgetExceeded(.stack) }
-        stack.append(BTEntry(tag: tag, a: a, b: b))
-    }
-
-    private mutating func write(slot: Int, _ value: Int) throws(BacktrackError) {
-        try push(.restore, slot, slots[slot])
-        slots[slot] = value
-    }
-
-    private mutating func reset(groups: Range<Int>) throws(BacktrackError) {
-        for group in groups {
-            for slot in [2 * group, 2 * group + 1] where slots[slot] >= 0 { try write(slot: slot, -1) }
-        }
-    }
-
-    /// Resumes the most recent choice, undoing what was done since. Returns `false` when none is left.
-    private mutating func backtrack(_ pc: inout Int, _ pos: inout Int) -> Bool {
-        while let entry = stack.popLast() {
-            switch entry.tag {
-                case .choice:
-                    pc = entry.a
-                    pos = entry.b
-                    return true
-                case .restore: slots[entry.a] = entry.b
-                case .atomicOpen, .lookPositive: _ = marks.popLast()
-                case .lookNegative:
-                    _ = marks.popLast()
-                    pc = entry.a
-                    pos = entry.b
-                    return true
-                case .inert: break
-            }
-        }
-        return false
-    }
-
-    /// Ends an atomic group or a positive look-around: its choice points go, its undo records stay.
-    private mutating func close(_ mark: Int) {
-        var write = mark + 1
-        for read in (mark + 1) ..< stack.count where stack[read].tag == .restore || stack[read].tag == .inert {
-            stack[write] = stack[read]
-            write += 1
-        }
-        stack.removeSubrange(write...)
-        stack[mark].tag = .inert
-    }
-
-    /// Takes back everything done since `mark`, the mark included.
-    private mutating func undo(to mark: Int) {
-        while stack.count > mark {
-            let entry = stack.removeLast()
-            if entry.tag == .restore { slots[entry.a] = entry.b }
-        }
     }
 
     // MARK: Consuming
