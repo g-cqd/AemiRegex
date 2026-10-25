@@ -38,5 +38,6 @@ AEMIREGEX_DEV=1 swift run -c release AemiRegexBench <corpus-dir>
 go run Scripts/golden/gen.go > Tests/AemiRegexTests/Resources/re2-golden.jsonl   # regenerate the Go oracle fixture
 ```
 
-Documents: `docs/DESIGN.md` (architecture, semantics, deliberate differences), `docs/ROADMAP.md` (phases, gates, owner questions),
-`docs/research/` (probes, with their sources).
+Documents: `docs/WHITE-PAPER.md` (the principles), `docs/adr/` (decisions), `docs/roadmap/` (what is owed, in order, with blockers),
+`docs/diary/` (the log and the probe ledger), `docs/DESIGN.md` (the architecture as built), `docs/research/` (dated notes with their probes).
+`AGENTS.md` is for anyone working in the repository.

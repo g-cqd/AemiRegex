@@ -40,7 +40,7 @@ no sign of such a loss.
 - x86_64 (SSE2, AVX2) timing; Rosetta results are correctness evidence only. The bar names both architectures, so this decision is
   provisional until a native host runs the probe.
 - A multi-literal "Teddy" kernel (`tbl`-based nibble lookup). That is where NEON-specific code could pay off. It is not built.
-- The effect on whole-regex time. Phase 1 of the engine has no prefilter; `docs/ROADMAP.md` gates the prefilter on the benchmark.
+- The effect on whole-regex time. Phase 1 of the engine has no prefilter; roadmap 0002 and ADR-0004 record the prefilter and its benchmark.
 - A quiet machine. Rerun when the load is below 2; the ratios are more trustworthy than the absolute numbers.
 
 **Revisit when** a multi-literal kernel exists in Swift and loses to a C or assembly version by more than 2x on 100 MB, natively on both
