@@ -124,33 +124,12 @@ extension Parser {
     private mutating func hex(start: Int) throws(PatternError) -> UInt32 {
         if peek() == 0x7B {
             position += 1
-            var value: UInt32 = 0
-            var digits = 0
-            while let c = peek(), c != 0x7D {
-                guard let digit = Self.hexValue(c) else { throw .syntax(.invalidEscape, offset: start) }
-                value = value * 16 + digit
-                guard value <= ScalarSet.maxScalar else { throw .syntax(.invalidScalar, offset: start) }
-                digits += 1
-                position += 1
-            }
-            guard peek() == 0x7D, digits > 0 else { throw .syntax(.invalidEscape, offset: start) }
-            position += 1
-            guard !(0xD800 ... 0xDFFF).contains(value) else { throw .syntax(.invalidScalar, offset: start) }
-            return value
+            return try braced(radix: 16, allowSurrogates: false, at: start)
         }
         guard let high = peek().flatMap(Self.hexValue), let low = peek(1).flatMap(Self.hexValue) else {
             throw .syntax(.invalidEscape, offset: start)
         }
         position += 2
         return high * 16 + low
-    }
-
-    private static func hexValue(_ c: UInt32) -> UInt32? {
-        switch c {
-            case 0x30 ... 0x39: c - 0x30
-            case 0x41 ... 0x46: c - 0x41 + 10
-            case 0x61 ... 0x66: c - 0x61 + 10
-            default: nil
-        }
     }
 }

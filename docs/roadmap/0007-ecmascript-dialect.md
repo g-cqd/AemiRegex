@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: in-progress
 blocked-by: []
 date: 2026-10-25
 ---
@@ -22,3 +22,11 @@ Backreferences, lookahead and lookbehind need the engine of roadmap 0009.
 ## Gate
 
 Agreement with `node` on a stated corpus, divergences listed with the oracle's answer, and the linear subset separated from the rest.
+
+## State (2026-10-25)
+
+Built on `BacktrackingPattern` (ADR-0011): flags `i m s` as options, `u` semantics always, `\d \w \s` (with `\w` under `i`), `.` excluding the four line
+terminators, `\uHHHH` with surrogate pairs, `\u{…}`, `\cX`, `\0`, named groups and `\k<…>`, `\p{…}` over categories and scripts, modifiers
+`(?i:…)`, captures reset on each iteration, empty iterations rejected, lookbehind read backwards. Agrees with `node` on the generated and curated
+corpora. **Open:** binary properties and `Script_Extensions` (Go's tables have neither), the `v` flag, duplicate named groups (ES2025), `\b` under
+`i` with `u` (the two extra word characters), and non-`u` mode (out of scope: ADR-0011). Status stays `in-progress` until those are built or refused by design.

@@ -25,6 +25,8 @@ public enum PatternError: Error, Equatable, Sendable {
         case unsupported
         /// A character that the dialect does not allow where it appears.
         case invalidCharacter
+        /// PCRE2: a look-behind whose length is not bounded, or is longer than 255 characters.
+        case unboundedLookbehind
     }
 
     /// Which limit a pattern exceeded.

@@ -8,7 +8,8 @@ and one machine it is faster than `NSRegularExpression`, Swift `Regex` and Go's 
 per-file workload** (median 2.2x) and than PCRE2 with JIT on most (median 2.2x; it wins five of 14 rows). It is not the fastest engine and
 does not claim to be; see `docs/research/engine-comparison-2026-10.md` for the numbers, the causes, the safety nets and the work queue. A
 small C target (NEON, SSSE3, scalar) holds the multi-literal prefilter kernel. I-Regexp (RFC 9485) is built, whole-string by default;
-`\p{…}` works over general categories and scripts, and `(?i)` folds Unicode. A `String` API, ECMAScript and PCRE2 are not built yet.
+`\p{…}` works over general categories and scripts, and `(?i)` folds Unicode. A separate type, `BacktrackingPattern`, runs backreferences, lookaround, atomic
+groups and possessive quantifiers in ECMAScript or PCRE2 syntax under a step and stack budget (see below).
 
 ```swift
 import AemiRegex
@@ -40,8 +41,20 @@ username.firstMatch(in: Array("Alice".utf8)) != nil        // false
 try Pattern(#"\d+"#, syntax: .iRegexp)                     // throws: \d is not in I-Regexp, with the offset
 ```
 
-Not supported, by design: backreferences, lookaround, atomic groups, possessive quantifiers. A pattern that uses them throws
-`PatternError.syntax(.unsupported, …)`.
+`Pattern` does not support backreferences, lookaround, atomic groups or possessive quantifiers, by design: it throws
+`PatternError.syntax(.unsupported, …)`. Use `BacktrackingPattern` for them. It is a separate type because its search can fail:
+
+```swift
+// ECMAScript (`u` flag) or PCRE2 (UTF mode, no UCP). A search that uses up its budget throws instead of hanging.
+let repeated = try BacktrackingPattern(#"(\w+) \1"#, dialect: .ecmaScript)
+try repeated.firstMatch(in: "say hello hello now")?.range        // 4 ..< 15
+let evil = try BacktrackingPattern("(a+)+b", dialect: .pcre2)
+try evil.firstMatch(in: String(repeating: "a", count: 60))       // throws BacktrackError.budgetExceeded(.steps)
+```
+
+It agrees with `node` (ECMAScript) and `libpcre2` on about 24,000 generated and 400 hand-picked pattern/subject pairs. Not yet supported:
+recursion and subroutine calls, conditionals, other backtracking verbs, `\G`, `\X`, binary Unicode properties, `Script_Extensions`, the `v`
+flag and non-`u` ECMAScript. Those throw `.unsupported`.
 
 ## Develop
 
