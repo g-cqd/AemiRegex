@@ -1,100 +1,133 @@
-# AemiRegex against Go, Rust, PCRE2 and ICU (2026-10-24)
+# AemiRegex against Go, Rust, PCRE2 and ICU (2026-10-24, second run)
 
-**Question.** After the ICU gate was met, how does AemiRegex compare with the fastest engines available here: Rust's `regex` crate
-(the engine behind ripgrep), PCRE2 with its JIT, and Go's `regexp`?
+First run and the first findings: the git history of this file. This run follows five changes (a pair-set prefilter, a boxed scratch, a
+tagged DFA inner loop, a literal matcher, and a C Teddy kernel driven in byte windows) and the safety work below.
 
 **Method (observed).** `Scripts/bench-compare.sh` freezes a copy of the corpus (431 Swift files, 1,070,930 bytes), builds one harness per
-engine, and prints median milliseconds over 9 rounds (3 for Swift Regex) of counting matches. Every harness reads the same
-`Benchmarks/Comparison/workloads.tsv`. Apple M2 Pro, arm64, load average 4 to 7 (other agents running). Versions: Go 1.27.3,
-Rust `regex` 1.12.3 (`--release`, LTO), PCRE2 10.49 with JIT, ICU through Foundation, Swift 6.4. Two modes:
-- **per file:** one haystack per file, as a search tool calls it. Per-call overhead is included.
-- **one buffer:** the same bytes as a single 1 MB haystack. Per-call overhead is gone, so this is scan speed.
-
-**Not run, so nothing is claimed:** RE2 itself, Hyperscan or Vectorscan (not installed here), and any host other than this one.
-
-**Match counts.** The `matches` column lists every distinct count. A single number means all engines agree. They disagree on the
-rows that can match empty, because engines differ on an empty match that touches the previous match, and on `\w` (Unicode in ICU,
-Swift Regex and Rust's str mode; ASCII elsewhere). Speed on those rows is comparable; the counts are not.
+engine, and prints median milliseconds over 9 rounds (3 for Swift Regex) of counting matches. Apple M2 Pro, arm64, load average 6 to 8
+(other agents running). Go 1.27.3, Rust `regex` 1.12.3 (`--release`, LTO), PCRE2 10.49 with JIT, ICU through Foundation, Swift 6.4.
+Two modes: **per file** (one haystack per file, per-call overhead included) and **one buffer** (the same bytes as one 1 MB haystack).
+**Not run:** RE2, Hyperscan or Vectorscan (not installed), any other host. Match counts differ between engines on rows that can match
+empty (engines disagree on an empty match that touches the previous one, and on Unicode `\w`); speed there is comparable, counts are not.
 
 ## Summary
 
-| | per file | one buffer |
+| AemiRegex time / engine time (median; range) | per file | one buffer |
 |---|---|---|
-| Rows where AemiRegex is the fastest engine | 0 of 14 | 0 of 14 |
-| AemiRegex time / Rust regex (median, range) | 3.8x (1.3 to 447x) | 2.5x (1.2 to 22x) |
-| AemiRegex time / PCRE2 JIT (median, range) | 3.2x (1.1 to 8.9x) | 2.3x (1.1 to 8.2x) |
-| AemiRegex faster than Go regexp | 12 of 14 rows (median 3x faster) | 13 of 14 |
-| AemiRegex faster than NSRegularExpression | 14 of 14 (median 8x) | 14 of 14 (median 14x) |
-| AemiRegex faster than Swift Regex | 14 of 14 (median 50x) | 14 of 14 (median 50x) |
+| Rust `regex` | 2.2x (1.0 to 177x) | 1.6x (0.9 to 4.0x) |
+| PCRE2 JIT | 2.2x (0.3 to 3.6x) | 1.8x (0.2 to 3.3x) |
+| Go `regexp` | faster on 13 of 14 rows | faster on 13 of 14 |
+| NSRegularExpression (ICU) | faster on 14 of 14 | faster on 14 of 14 |
 
-**AemiRegex is third.** It is faster than Go, ICU and Swift Regex, and slower than Rust `regex` and PCRE2-JIT on every workload.
-It is not the fastest, and "fastest" is not claimed anywhere in this repository.
+Before this round the medians were 3.8x and 2.5x (Rust) and 3.2x and 2.3x (PCRE2). **AemiRegex is still third overall**: slower than Rust
+on every per-file row, and on all but two one-buffer rows. It is faster than PCRE2-JIT on five rows (alternation, captures,
+case-insensitive, `\w*Error`, `[ \t]*$`). It is not the fastest engine and nothing here claims it is.
+
+## What moved (AemiRegex, per file, ms)
+
+| workload | before | after | Rust | change |
+|---|---|---|---|---|
+| alternation | 3.83 | 0.63 | 0.17 | 6.1x |
+| case-insensitive | 1.96 | 0.49 | 0.15 | 4.0x |
+| captures | 5.74 | 2.21 | 0.53 | 2.6x |
+| `\w*Error` | 4.51 | 1.77 | 1.74 | 2.5x, at parity |
+| `[ \t]*$` | 4.23 | 1.77 | 0.01 | 2.4x |
+| literal | 0.25 | 0.14 | 0.05 | 1.8x |
+| `\bclass\b` | 0.19 | 0.11 | 0.05 | 1.7x |
+| `(?m)^\s*$` | 4.70 | 1.93 | 1.81 | 2.4x, near parity |
+| `\w*`, `\b` (a match every 2 to 3 bytes) | 16.8, 14.7 | 17.6, 18.9 | 13.2, 10.1 | none; slightly worse |
 
 ## Per file
 
 | workload | Go regexp | Rust regex (ASCII bytes) | Rust regex (Unicode str) | PCRE2 JIT | AemiRegex | NSRegularExpression (ICU) | Swift Regex | matches |
 |---|---|---|---|---|---|---|---|---|
-| literal | 0.20 | **0.05** | **0.05** | 0.06 | 0.26 | 3.14 | 22.67 | 373 |
-| alternation | 51.34 | **0.16** | **0.16** | 1.50 | 3.79 | 27.96 | 244.93 | 1216 |
-| func-async | 1.00 | 0.17 | 0.17 | **0.11** | 0.47 | 4.04 | 23.36 | 114 |
-| captures | 38.96 | **0.53** | 0.56 | 2.47 | 5.69 | 248.23 | 571.48 | 297 |
-| case-insensitive | 40.76 | **0.14** | **0.14** | 1.69 | 1.91 | 15.02 | 242.31 | 0 |
-| no-match-rare-byte | 0.04 | **0.02** | **0.02** | 0.03 | 0.18 | 3.07 | 20.80 | 0 |
-| word-boundary | 16.12 | **0.05** | **0.05** | **0.05** | 0.19 | 3.72 | 102.83 | 21 |
-| line-anchor | 10.85 | 0.07 | 0.07 | **0.06** | 0.19 | 3.75 | 33.89 | 0 |
-| prefix-nullable | 23.95 | **1.69** | 1.70 | 2.83 | 4.19 | 126.46 | 209.99 | 753 |
-| blank-lines | 14.56 | 1.80 | 1.81 | **0.53** | 4.70 | 7.23 | 43.78 | 1775, 2206 |
-| optional-word | 52.53 | 12.81 | 14.68 | **6.68** | 16.87 | 24.46 | 111.37 | 384987, 384988, 385162, 510332, 510507 |
-| trailing-space | 25.57 | **0.01** | **0.01** | 3.47 | 4.47 | 61.36 | 82.29 | 431, 862 |
-| empty-word-edges | 44.03 | 9.89 | 11.53 | **5.50** | 14.93 | 37.45 | 155.16 | 250690, 366448 |
-| empty-line-ends | 14.31 | 1.68 | 1.84 | **1.28** | 5.30 | 21.06 | 34.59 | 22423 |
+| literal | 0.21 | **0.05** | **0.05** | 0.06 | 0.14 | 3.18 | 23.37 | 373 |
+| alternation | 51.00 | **0.17** | **0.17** | 1.53 | 0.63 | 28.78 | 247.86 | 1233 |
+| func-async | 0.98 | 0.18 | 0.17 | **0.11** | 0.23 | 4.19 | 23.77 | 114 |
+| captures | 39.70 | **0.53** | **0.53** | 2.50 | 2.21 | 255.09 | 581.03 | 298 |
+| case-insensitive | 41.73 | 0.15 | **0.14** | 1.72 | 0.49 | 15.41 | 251.08 | 0 |
+| no-match-rare-byte | 0.04 | **0.02** | **0.02** | 0.03 | 0.10 | 3.03 | 21.56 | 0 |
+| word-boundary | 16.55 | **0.05** | **0.05** | **0.05** | 0.11 | 3.87 | 108.45 | 21 |
+| line-anchor | 11.06 | 0.08 | 0.07 | **0.06** | 0.11 | 3.88 | 35.14 | 0 |
+| prefix-nullable | 24.44 | 1.74 | **1.73** | 2.94 | 1.77 | 130.55 | 215.76 | 769 |
+| blank-lines | 15.06 | 1.81 | 1.83 | **0.54** | 1.93 | 7.38 | 45.28 | 1807, 2244 |
+| optional-word | 52.98 | 13.20 | 15.00 | **6.80** | 17.58 | 25.16 | 114.30 | 393196, 393197, 393371, 520802, 520977 |
+| trailing-space | 26.28 | **0.01** | **0.01** | 3.56 | 1.77 | 119.19 | 153.68 | 437, 874 |
+| empty-word-edges | 44.87 | 10.07 | 11.85 | **5.62** | 18.86 | 52.12 | 188.85 | 255212, 373278 |
+| empty-line-ends | 14.77 | 1.92 | 1.97 | **1.31** | 3.03 | 26.58 | 46.77 | 22860 |
 
 ## One 1 MB buffer
 
 | workload | Go regexp | Rust regex (ASCII bytes) | Rust regex (Unicode str) | PCRE2 JIT | AemiRegex | NSRegularExpression (ICU) | Swift Regex | matches |
 |---|---|---|---|---|---|---|---|---|
-| literal | 0.21 | **0.04** | **0.04** | 0.05 | 0.12 | 3.69 | 22.15 | 373 |
-| alternation | 62.96 | 0.16 | **0.15** | 1.53 | 3.53 | 28.72 | 242.44 | 1216 |
-| func-async | 2.02 | 0.15 | 0.15 | **0.10** | 0.35 | 4.72 | 23.05 | 114 |
-| captures | 48.36 | **0.65** | 0.66 | 2.60 | 5.44 | 263.14 | 573.10 | 297 |
-| case-insensitive | 50.09 | **0.13** | 0.14 | 1.72 | 1.82 | 15.55 | 241.46 | 0 |
-| no-match-rare-byte | 0.02 | **0.01** | **0.01** | 0.02 | 0.04 | 3.42 | 20.61 | 0 |
-| word-boundary | 15.95 | **0.04** | **0.04** | **0.04** | 0.07 | 4.27 | 106.11 | 21 |
-| line-anchor | 9.98 | 0.06 | 0.06 | **0.05** | 0.07 | 4.30 | 33.53 | 0 |
-| prefix-nullable | 29.48 | **1.69** | 1.71 | 2.56 | 4.16 | 134.17 | 209.38 | 753 |
-| blank-lines | 13.71 | 1.76 | 1.78 | **0.54** | 4.44 | 8.29 | 43.15 | 1775, 1776 |
-| optional-word | 62.77 | 12.70 | 14.67 | **6.60** | 16.66 | 24.80 | 127.67 | 384557, 384558, 384732, 509902, 510077 |
-| trailing-space | 27.66 | **0.00** | **0.00** | 3.31 | 4.11 | 80.24 | 82.21 | 1, 2 |
-| empty-word-edges | 41.52 | 9.73 | 11.74 | **5.48** | 14.38 | 39.86 | 163.18 | 250690, 366018 |
-| empty-line-ends | 12.57 | 1.62 | 1.73 | **1.28** | 4.95 | 21.11 | 32.68 | 21993 |
+| literal | 0.21 | **0.04** | **0.04** | 0.06 | 0.09 | 3.74 | 23.65 | 373 |
+| alternation | 81.07 | **0.16** | **0.16** | 1.58 | 0.63 | 30.13 | 452.16 | 1233 |
+| func-async | 2.92 | 0.16 | 0.15 | **0.11** | 0.20 | 5.02 | 24.31 | 114 |
+| captures | 52.73 | **0.68** | 0.69 | 2.70 | 2.22 | 280.26 | 594.04 | 298 |
+| case-insensitive | 58.33 | **0.14** | **0.14** | 1.74 | 0.39 | 16.22 | 250.57 | 0 |
+| no-match-rare-byte | 0.04 | **0.01** | **0.01** | 0.02 | 0.04 | 3.55 | 21.27 | 0 |
+| word-boundary | 17.34 | **0.04** | **0.04** | **0.04** | 0.07 | 4.38 | 109.94 | 21 |
+| line-anchor | 10.84 | 0.06 | 0.06 | **0.05** | 0.08 | 4.49 | 34.71 | 0 |
+| prefix-nullable | 32.70 | 1.81 | 1.77 | 2.64 | **1.71** | 139.44 | 216.57 | 769 |
+| blank-lines | 14.99 | 1.84 | 2.00 | **0.56** | 1.83 | 9.03 | 44.71 | 1807, 1808 |
+| optional-word | 78.24 | 13.86 | 16.20 | **7.26** | 17.54 | 25.87 | 122.45 | 392760, 392761, 392935, 520366, 520541 |
+| trailing-space | 29.96 | **0.00** | **0.00** | 3.36 | 1.67 | 83.21 | 85.71 | 1, 2 |
+| empty-word-edges | 49.74 | 10.21 | 12.50 | **6.01** | 13.31 | 41.26 | 167.09 | 255212, 372842 |
+| empty-line-ends | 14.28 | 1.72 | 1.82 | **1.33** | 2.82 | 21.92 | 33.63 | 22424 |
 
-## Where the gap comes from
+## What each step was, and what the profiles said
 
-Each cause below is tied to a row; the first two are measured by comparing the two tables, the rest are read from how the other engines
-work (Rust's `regex` and PCRE2 documentation and design), **not probed here**, and are hypotheses until a change shows the effect.
+Each change was kept only after a profile (`sample`) located the cost and the benchmark showed the row move.
 
-1. **Scan speed, not call overhead (measured).** Moving from per-file to one buffer removes the per-call cost and the ratio to Rust
-   falls from 3.8x to 2.5x at the median. Most of the gap remains, so it is the scan.
-2. **Alternations of literals and case-insensitive literals: 14 to 22x behind Rust (measured; cause hypothesised).** `import|struct|…`
-   and `(?i)todo|fixme|hack` are sets of literals. Rust searches them with a multi-literal SIMD matcher (Teddy) and only then
-   verifies. AemiRegex's prefilter scans for the first byte of any alternative, which is common in source text, so the DFA runs on most
-   bytes at about 3.5 ns per byte.
-3. **DFA inner loop (measured throughput: 3 to 4 ns per byte; cause hypothesised).** Rows with no literal to skip to
-   (`(?m)^\s*$`, `\w*`, `\b`, `(?m)$`) run the DFA on every byte, at 3 to 4x Rust and PCRE2. The loop uses bounds-checked arrays, a flag
-   load and a start-state test per byte.
-4. **End-anchored patterns (hypothesis).** `[ \t]*$` takes Rust 0.00 to 0.01 ms for the whole corpus, which is not a scan of 1 MB.
-   It most likely searches backwards from the end of the text. AemiRegex scans forward through every byte (4.1 ms).
-5. **Per-call overhead (measured at about 0.15 ms per 431 calls on the literal row).** AemiRegex takes a lock to borrow its scratch,
-   allocates the result array, and returns `[Match]`; Rust's `find_iter().count()` allocates nothing.
-6. **Go beats AemiRegex on the two rows where a single literal or a rare byte decides everything** (`no-match-rare-byte`: Go 0.04 ms
-   against 0.17; `literal` per file: Go 0.23 against 0.27). Go calls its optimised substring search directly.
+1. **Pair-set prefilter.** Alternation 3.83 to 1.04 ms. The first bytes of five keywords are common; their first two are not.
+2. **Scratch in a class.** The pool copied a struct of about thirty arrays out and back on every search: a third of the literal row was
+   retain and release. A boxed scratch moved the per-call rows by 1.5 to 2x.
+3. **Tagged, premultiplied DFA entries and one unchecked loop.** DFA throughput went from about 4 ns per byte to about 1.6. Dense-match
+   rows needed a one-step checked fast path first, or the loop's setup dominated.
+4. **Literal matcher.** A pattern that is only fixed strings is answered by verifying them at candidates: no DFA, no reverse scan.
+   **The first version was never called**: the edit missed after the formatter rewrapped a signature, and the tests passed because the
+   DFA returns the same answers. A per-engine counter (`SearchCounts`) now lets a test assert which engine answered.
+5. **C Teddy kernel.** See the probe correction below. Driven one candidate at a time it gained little; driven in byte windows with the
+   candidates of a window in one call it did. Two mistakes on the way: a batch of 256 candidates rescanned about 14 KB per search
+   (alternation became 2x slower, found by profiling), and the first-byte dispatch of the verifier was still missing.
+
+## Probe correction
+
+The first Teddy-versus-Swift probe measured 1.4 to 1.8x and recommended no C code. **That probe was unfair**: neither loop was unrolled,
+so each iteration paid its horizontal-reduce latency. With 64-byte unrolling on both, at 100 MB on arm64:
+
+| literal set | Swift pair-set | C NEON Teddy | ratio |
+|---|---|---|---|
+| 5 pairs | 5.0 GB/s | 16.9 GB/s | 3.3x |
+| 12 pairs | 2.7 GB/s | 16.5 GB/s | 6.1x |
+
+That meets the revisit bar in `neon-assembly-2026-10.md` (more than 2x at 100 MB). The kernel is C intrinsics, not assembly. x86_64 timing
+is **not measured** (Rosetta runs the SSSE3 path for correctness only), so the bar is met on arm64 only.
+
+## Safety
+
+Speed was bought with an unchecked loop and a C kernel, so each has its own net:
+
+| Risk | Net | Evidence |
+|---|---|---|
+| C reads or writes past a buffer | every vector load guarded by a length test; output bounded by a caller capacity; the Swift wrapper checks every C result and **stops the program** if it is out of range | poisoned-tail and guard-band tests; four C mutations crash or fail |
+| One-byte overread in an unchecked DFA loop | `unsafe` confined to two functions with the invariants written above them; debug assertions inside; poison tests for forward and reverse | forward overread caught by a poison test; the reverse one is invisible in output and caught by debug builds and ASan |
+| Output buffer overrun when candidates are dense | a test where every position is a candidate, in Swift and in the C check | mutation M16 was **not caught** until this test existed |
+| SIMD disagrees with the scalar reference | SIMD result compared with scalar for random tables, every offset, every size around the vector widths | Swift tests and `Scripts/teddy-check.sh` (about 105,000 checks) |
+| Invalid UTF-8 and arbitrary bytes | 103 patterns and 11 literal and Unicode patterns against 60 haystacks of random and hostile bytes, DFA pipeline against the Pike VM | `MalformedInputTests` |
+| x86 path never run | the C check built for x86_64 and run under Rosetta, which reports SSSE3 | `Scripts/teddy-check.sh` |
+| Data races on the shared scratch | scratch boxes are in the pool or in one search, never both; 64 tasks on one pattern | TSan clean, concurrency test |
+
+Also run clean on the final code: ASan with UBSan (zero reports), TSan (zero reports), and the debug build with its assertions.
+**One mistake worth recording:** a `git checkout` of one file during mutation testing discarded my uncommitted edits to it. The file was
+rebuilt from the diff of what it had been and a checkpoint commit followed; mutation runs now restore from copies.
 
 ## Work queue, in order of measured gap per effort
 
-1. Multi-literal prefilter (Teddy-style, `tbl` nibble lookup), then verify with the DFA. Probe first: the NEON note's revisit bar
-   is exactly this kernel.
-2. DFA inner loop: premultiplied state ids, unchecked table reads inside one documented unsafe boundary, a tagged id so one
-   compare handles match, start and dead.
-3. Reverse-from-the-end search for patterns anchored at the end of the text, and inner-literal prefilters (`\w*Error`).
-4. A non-allocating iteration API (`forEachMatch`, `matchCount`) and a lock-free fast path for the scratch.
-5. Rerun this comparison after each step; keep a step only if its row moves.
+1. **End-anchored patterns** (`[ \t]*$`: Rust 0.01 ms against 1.77 here, 177x): search backwards from the end instead of scanning forward.
+2. **An inner literal for captures** (`(\w+)\s*:\s*(\w+)\s*\{`: 4x behind Rust): search for a required literal, then run the reverse DFA from it.
+3. **Per-match cost on dense empty matches** (`\w*`, `\b`): about 60 ns per match against about 35 for Rust; a forward-only path when the
+   start is known (nullable patterns without assertions start at the search offset).
+4. **Per-call overhead on tiny haystacks** (literal 0.14 against 0.05): a non-allocating iteration API and a lock-free scratch fast path.
+5. **Verification still costs about 40% of the literal rows**; Teddy with three bytes, or a rare-byte filter, would cut candidates.
+6. Rerun after each step; keep a step only if its row moves.

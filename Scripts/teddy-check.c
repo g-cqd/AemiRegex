@@ -61,6 +61,34 @@ int main(void) {
             free(buffer);
         }
     }
+    // Dense case: every position but the last is a candidate, so the output buffer fills in every call.
+    {
+        uint8_t table[AEMIRE_TEDDY2_TABLE_BYTES] = {0};
+        const uint8_t ab[2] = {'a', 'b'};
+        for (int x = 0; x < 2; x++) for (int y = 0; y < 2; y++) {
+            uint8_t bucket = (uint8_t)(1u << (2 * x + y));
+            table[ab[x] & 15] |= bucket; table[16 + (ab[x] >> 4)] |= bucket; table[32 + (ab[y] & 15)] |= bucket; table[48 + (ab[y] >> 4)] |= bucket;
+        }
+        for (size_t size = 2; size <= 600; size += (size < 140 ? 1 : 37)) {
+            uint8_t *buffer = malloc(size); for (size_t i = 0; i < size; i++) buffer[i] = (next() & 1) ? 'a' : 'b';
+            size_t caps[] = {1, 2, 15, 16, 17, 63, 64, 65, 100, 256};
+            for (size_t c = 0; c < sizeof caps / sizeof caps[0]; c++) {
+                size_t cap = caps[c], out[256 + 8], total = 0, resume = 0, from = 0, expected_next = 0;
+                for (int guard = 0; from < size && guard < 5000; guard++) {
+                    for (size_t g = 0; g < cap + 8 && g < 264; g++) out[g] = 0xDEADBEEF;
+                    size_t k = aemire_teddy2_candidates(table, buffer, size, from, out, cap, &resume);
+                    if (k > cap) { printf("DENSE wrote %zu > cap %zu\n", k, cap); return 1; }
+                    for (size_t g = cap; g < cap + 8 && g < 264; g++) if (out[g] != 0xDEADBEEF) { printf("DENSE wrote past cap %zu (size %zu)\n", cap, size); return 1; }
+                    for (size_t g = 0; g < k; g++) { if (out[g] != expected_next++) { printf("DENSE wrong candidate\n"); return 1; } total++; }
+                    if (!(resume > from || resume >= size)) { printf("DENSE no progress\n"); return 1; }
+                    from = resume;
+                }
+                if (total != size - 1) { printf("DENSE %zu candidates, wanted %zu (size %zu cap %zu)\n", total, size - 1, size, cap); return 1; }
+                checks++;
+            }
+            free(buffer);
+        }
+    }
     printf("ok: %zu checks, SIMD == scalar (find and batch), none out of range, batch never past its capacity\n", checks);
     return 0;
 }

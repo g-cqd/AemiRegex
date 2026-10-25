@@ -137,4 +137,33 @@ struct TeddyTests {
             #expect(count == 0, "\(size) bytes: a candidate past the end was reported")
         }
     }
+
+    /// When every position is a candidate the output buffer fills in every call: this is the case that can overrun it. The pair set
+    /// accepts any two bytes of {a, b}, so a haystack of only a and b makes every position but the last a candidate.
+    @Test(arguments: sizes)
+    func `a haystack where every position is a candidate fills any capacity without writing past it`(size: Int) {
+        guard size >= 2 else { return }
+        let teddy = Teddy([BytePair(0x61, 0x61), BytePair(0x61, 0x62), BytePair(0x62, 0x61), BytePair(0x62, 0x62)])
+        var rng = SplitMix64(state: UInt64(size))
+        let bytes: [UInt8] = (0 ..< size).map { _ in Bool.random(using: &rng) ? 0x61 : 0x62 }
+        for capacity in [1, 2, 15, 16, 17, 63, 64, 65, 100, 256] {
+            var collected: [Int] = []
+            var resume = 0
+            while resume < size {
+                var out = [Int](repeating: -7, count: capacity + 8)
+                let (count, next) = out.withUnsafeMutableBufferPointer { buffer in
+                    bytes.withUnsafeBufferPointer {
+                        teddy.candidates(
+                            in: $0, from: resume,
+                            into: UnsafeMutableBufferPointer<Int>(rebasing: buffer[0 ..< capacity]))
+                    }
+                }
+                #expect(count <= capacity, "capacity \(capacity): wrote \(count)")
+                #expect(out[capacity...].allSatisfy { $0 == -7 }, "capacity \(capacity): wrote past it")
+                collected += out[0 ..< count]
+                resume = next
+            }
+            #expect(collected == Array(0 ..< size - 1), "capacity \(capacity), \(size) bytes")
+        }
+    }
 }

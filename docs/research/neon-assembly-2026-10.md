@@ -45,3 +45,15 @@ no sign of such a loss.
 
 **Revisit when** a multi-literal kernel exists in Swift and loses to a C or assembly version by more than 2x on 100 MB, natively on both
 architectures.
+
+## Update (2026-10-24, later): the decision above was wrong for multi-literal sets
+
+The multi-literal ("Teddy") kernel this note names as the open case was probed with the loops unrolled to 64 bytes. C NEON intrinsics
+(`vqtbl1q_u8`) ran at 16.5 to 16.9 GB/s against 2.7 to 5.0 GB/s for the best compare-based Swift SIMD version: 3.3x and 6.1x at 100 MB on
+arm64. An earlier probe without unrolling had shown only 1.4 to 1.8x because both loops were latency-bound; it understated the gap.
+Swift SIMD cannot express a variable byte shuffle (`tbl`, `pshufb`), so no Swift version of Teddy exists.
+
+**Decision, revised:** `Sources/CAemiRegex` holds C intrinsics (NEON, SSSE3, scalar) for exactly this kernel, behind a Swift wrapper that
+checks every result. Still no hand-written assembly: the intrinsics compile to what assembly would be. The single-byte, byte-pair and
+byte-set scans stay in Swift (within 1.0 to 1.4x of C in the first probe). The x86_64 timing bar is **not met**: only correctness is
+checked there (Rosetta). Details, the safety nets and the end-to-end effect: `engine-comparison-2026-10.md`.
