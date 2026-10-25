@@ -19,6 +19,12 @@ struct RepositoryHygieneTests {
         #expect(problems(["lib.a": ""], sizes: ["lib.a": RepositoryHygiene.maximumBytes]).isEmpty)
     }
 
+    @Test func `a work marker in a Swift source is reported, and in a document it is not`() {
+        #expect(problems(["A.swift": "// " + "TO" + "DO: later"]).count == 1)
+        #expect(problems(["B.swift": "let note = \"FIX" + "ME\""]).count == 1)
+        #expect(problems(["notes.md": "a TO" + "DO in prose"]).isEmpty)
+    }
+
     @Test func `a home-directory path, a token and a private key are reported`() {
         let home = "/Us" + "ers/someone/Developer"
         #expect(problems(["a.md": "see \(home)/x"]).count == 1)
