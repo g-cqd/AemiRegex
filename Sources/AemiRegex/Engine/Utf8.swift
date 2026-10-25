@@ -1,7 +1,7 @@
 /// UTF-8 decoding helpers for scalar boundaries in a byte haystack that may not be valid UTF-8.
 enum Utf8 {
     /// The width of the valid UTF-8 scalar that starts at `index`, or 1 when the bytes there are not a valid scalar.
-    static func width(of bytes: [UInt8], at index: Int) -> Int {
+    static func width(of bytes: ByteBuffer, at index: Int) -> Int {
         let lead = bytes[index]
         let expected: Int
         var lowest: UInt8 = 0x80

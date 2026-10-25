@@ -30,3 +30,12 @@ test caught it). All are now caught (diary 2026-10-24-01).
 ## Consequences
 
 A new unsafe construct needs all five nets before it merges. A net that cannot fail is not counted.
+
+## Update, 2026-10-25
+
+Searches now take a borrowed buffer so strings and arrays are searched in place. The Pike VM, which is the bounds-checked reference, reads it
+through `ByteBuffer`, declared `@safe` because its only read is a subscript that checks the index in release builds as well; the raw pointer
+accessor stays `@unsafe`. The claim is tested by exit tests (a read one past the end, a negative read and a read of an empty buffer each must
+kill the process) and by mutation (a bound loosened by 64 fails them). Marking the whole type `@unsafe` instead was tried and rejected: it put
+an `unsafe` on every line of the reference engine without making it any less checked.
+

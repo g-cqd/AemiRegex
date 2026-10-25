@@ -15,7 +15,7 @@ budget: there is no backtracking, so no pattern can make a search exponential. T
 | Lazy DFA | `Engine/LazyDFA.swift`, `ByteClasses.swift`, `EpsilonWalker.swift`, `NeighborContext.swift` | Forward unanchored leftmost-first for the match end; reverse anchored longest (on the mirrored program) for the start. States are built on first use under a byte limit. |
 | Pike VM | `Engine/PikeVM.swift` | Thread list in priority order gives leftmost-first matches with captures. Runs on the matched window for captures, and as the fallback when the DFA cache fills. It is the reference the DFA is tested against (`Engine.pikeOnly`). |
 | Scratch pool | `Engine/SearchScratch.swift` | DFA caches and Pike buffers, one set per concurrent search, taken under a short lock. |
-| API | `Pattern.swift`, `Match.swift`, `PatternError.swift` | Byte offsets into UTF-8. `Pattern` is a `Sendable` value. |
+| API | `Pattern*.swift`, `Match*.swift`, `PatternError.swift` | Byte offsets into UTF-8, for `[UInt8]` and for `String` (searched in place); `Match.range(in:)` maps back to `String.Index`. `Pattern` is a `Sendable` value. Every search takes a borrowed `ByteBuffer`. |
 
 ## Semantics decided
 

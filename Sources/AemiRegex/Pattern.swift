@@ -5,9 +5,9 @@
 public struct Pattern: Sendable {
     let program: Program
     let prefilter: Prefilter
-    private let literals: LiteralSet?
-    private let plan: DFAPlan?
-    private let pool: ScratchPool
+    let literals: LiteralSet?
+    let plan: DFAPlan?
+    let pool: ScratchPool
 
     /// Compiles `pattern`.
     /// - Throws: ``PatternError`` for malformed syntax, an unsupported construct, or a pattern over a limit.
@@ -101,9 +101,7 @@ public struct Pattern: Sendable {
     /// - Returns: The match, or `nil` when there is none.
     /// - Complexity: O(pattern size × haystack size) worst case; O(haystack size) once the DFA has built its states.
     public func firstMatch(in haystack: [UInt8], from start: Int = 0) -> Match? {
-        guard start >= 0, start <= haystack.count else { return nil }
-        var allowDFA = true
-        return pool.withScratch { search(&$0, haystack, from: start, allowDFA: &allowDFA) }
+        haystack.withUnsafeBufferPointer { unsafe firstMatch(inBuffer: ByteBuffer($0), from: start) }
     }
 
     /// Every non-overlapping match, left to right. An empty match that touches the previous match is skipped, as in RE2 and Go.
@@ -111,27 +109,35 @@ public struct Pattern: Sendable {
     /// - Returns: The matches in order; empty when there are none.
     /// - Complexity: As ``firstMatch(in:from:)`` in total, with one scratch value for all matches.
     public func matches(in haystack: [UInt8]) -> [Match] {
-        pool.withScratch { scratch in
-            var result: [Match] = []
-            var position = 0
-            var previousEnd = -1
-            var allowDFA = true
-            while position <= haystack.count,
-                let match = search(&scratch, haystack, from: position, allowDFA: &allowDFA)
-            {
-                var accept = true
-                if match.range.upperBound == position {
-                    if match.range.lowerBound == previousEnd { accept = false }
-                    position += position < haystack.count ? Utf8.width(of: haystack, at: position) : 1
-                } else {
-                    position = match.range.upperBound
-                }
-                previousEnd = match.range.upperBound
-                if accept { result.append(match) }
-            }
-            return result
+        var result: [Match] = []
+        forEachMatch(in: haystack) { match in
+            result.append(match)
+            return true
         }
+        return result
     }
+
+    /// Calls `body` with each match, left to right, as ``matches(in:)`` would list them, without building the list.
+    /// - Parameters:
+    ///   - haystack: The bytes to search.
+    ///   - body: Receives a match; return `false` to stop.
+    /// - Complexity: As ``matches(in:)``; allocates nothing per match for a pattern without capture groups.
+    public func forEachMatch(in haystack: [UInt8], _ body: (Match) -> Bool) {
+        haystack.withUnsafeBufferPointer { unsafe forEachMatch(inBuffer: ByteBuffer($0), body) }
+    }
+
+    /// The number of matches ``matches(in:)`` would list, counted without building them.
+    public func matchCount(in haystack: [UInt8]) -> Int {
+        var count = 0
+        forEachMatch(in: haystack) { _ in
+            count += 1
+            return true
+        }
+        return count
+    }
+
+    /// Whether there is a match. For a whole-string pattern: whether the whole text is one.
+    public func isMatch(in haystack: [UInt8]) -> Bool { firstMatch(in: haystack) != nil }
 
     /// What the forward DFA says about `haystack`, for tests of the cache limit.
     func forwardOutcome(in haystack: [UInt8]) -> LazyDFA.Outcome {
@@ -153,90 +159,5 @@ public struct Pattern: Sendable {
             var gaveUp = false
             return unsafe scratch.reverse?.searchReverse(buffer, end: end, floor: floor, gaveUp: &gaveUp)
         }
-    }
-
-    // MARK: Search
-
-    /// One search: the DFA finds where the match ends and where it starts, and the Pike VM runs on that window only if the
-    /// pattern has captures. A DFA that gives up (cache full) disables itself for the rest of the call and the Pike VM answers.
-    ///
-    /// The DFA starts a match at every byte, the Pike VM only at scalar boundaries. A match that begins with a byte cannot start
-    /// inside a scalar, so the two differ only for an empty match inside one; such a match is dropped and the search resumes at the
-    /// next byte, which is what the Pike VM would have done (at most three retries per scalar).
-    private func search(_ scratch: inout SearchScratch, _ haystack: [UInt8], from start: Int, allowDFA: inout Bool)
-        -> Match?
-    {
-        if let literals {
-            scratch.counts.literal += 1
-            return literalSearch(literals, haystack, from: start)
-        }
-        if endAnchored, allowDFA, scratch.reverse != nil {
-            scratch.counts.endAnchored += 1
-            var gaveUp = false
-            let end = haystack.count
-            let begin = haystack.withUnsafeBufferPointer {
-                unsafe scratch.reverse?.searchReverse($0, end: end, floor: start, gaveUp: &gaveUp)
-            }
-            guard gaveUp else {
-                guard let matchStart = begin ?? nil else { return nil }
-                if program.captureCount == 0 { return Match(range: matchStart ..< end) }
-                return pike(&scratch, haystack, from: matchStart, anchored: true, limit: end)
-            }
-            scratch.reverse?.reset()
-            allowDFA = false
-        }
-        if allowDFA, scratch.forward != nil {
-            scratch.counts.dfa += 1
-            var from = start
-            while from <= haystack.count {
-                let outcome = haystack.withUnsafeBufferPointer {
-                    unsafe scratch.forward?.searchForward($0, from: from, prefilter: prefilter)
-                }
-                guard case .match(let end) = outcome else {
-                    if outcome == .noMatch { return nil }
-                    scratch.forward?.reset()
-                    break
-                }
-                var gaveUp = false
-                let matchStart = haystack.withUnsafeBufferPointer {
-                    unsafe scratch.reverse?.searchReverse($0, end: end, floor: from, gaveUp: &gaveUp)
-                }
-                guard let matchStart else {
-                    if gaveUp { scratch.reverse?.reset() }
-                    break
-                }
-                if matchStart == end, !PikeVM.isBoundary(haystack, matchStart) {
-                    from = matchStart + 1
-                    continue
-                }
-                if program.captureCount == 0 { return Match(range: matchStart ..< end) }
-                return pike(&scratch, haystack, from: matchStart, anchored: true, limit: end)
-            }
-            if from > haystack.count { return nil }
-            allowDFA = false
-        }
-        return pike(&scratch, haystack, from: start, anchored: false, limit: nil)
-    }
-
-    /// The leftmost match of a pure literal alternation: the prefilter offers candidates and the alternatives are checked at each.
-    private func literalSearch(_ literals: LiteralSet, _ haystack: [UInt8], from start: Int) -> Match? {
-        haystack.withUnsafeBufferPointer { buffer in
-            unsafe literals.firstMatch(in: buffer, from: start, prefilter: prefilter).map { Match(range: $0) }
-        }
-    }
-
-    private func pike(_ scratch: inout SearchScratch, _ haystack: [UInt8], from start: Int, anchored: Bool, limit: Int?)
-        -> Match?
-    {
-        scratch.counts.pike += 1
-        guard scratch.pike.search(haystack, from: start, anchored: anchored, limit: limit) else { return nil }
-        let slots = scratch.pike.best
-        let captures = (1 ..< slots.count / 2)
-            .map { group -> Range<Int>? in
-                let lower = slots[2 * group]
-                let upper = slots[2 * group + 1]
-                return lower >= 0 && upper >= lower ? lower ..< upper : nil
-            }
-        return Match(range: slots[0] ..< slots[1], captures: captures)
     }
 }
