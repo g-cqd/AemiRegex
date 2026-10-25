@@ -6,6 +6,7 @@ extension BTParser {
         let negated = peek() == 0x5E
         if negated { position += 1 }
         var members: [ClosedRange<UInt32>] = []
+        var fixed: [ClosedRange<UInt32>] = []  // members that `i` does not widen
         var first = true
         while true {
             guard let c = peek() else { throw .syntax(.unterminatedClass, offset: open) }
@@ -26,18 +27,21 @@ extension BTParser {
                         throw .syntax(.invalidClassRange, offset: open)
                 }
             } else {
-                append(low, to: &members)
+                append(low, to: &members, fixed: &fixed)
             }
         }
         var set = ScalarSet(normalizing: members)
         if flags.ignoreCase { set = set.folded() }
+        set = set.union(ScalarSet(normalizing: fixed))
         try addSet(negated ? set.negated() : set)
     }
 
-    private func append(_ atom: BTEscaped, to members: inout [ClosedRange<UInt32>]) {
+    private func append(_ atom: BTEscaped, to members: inout [ClosedRange<UInt32>], fixed: inout [ClosedRange<UInt32>])
+    {
         switch atom {
             case .scalar(let scalar): members.append(scalar ... scalar)
             case .set(let set): members += set.ranges
+            case .fixedSet(let set): fixed += set.ranges
         }
     }
 

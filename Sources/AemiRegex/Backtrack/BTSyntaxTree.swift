@@ -4,5 +4,6 @@ struct BTSyntaxTree: Sendable {
     var root: Int
     var sets: [CharSet]
     var captureCount: Int
-    var names: [String: Int]
+    /// Each group name with the groups that have it, in order: only ECMAScript allows more than one, in different alternatives.
+    var names: [String: [Int]]
 }

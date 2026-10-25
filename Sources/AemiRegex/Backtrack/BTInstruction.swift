@@ -9,15 +9,17 @@ struct BTInstruction: Equatable, Sendable {
         case split
         /// Continue at `pc + x`.
         case jump
-        /// Record the position in slot `x`.
+        /// Record the position in slot `x`. With `y == 1` it closes a group: if the innermost call is to that group, the call returns here.
         case save
         /// Continue only if ``BTAssertion`` `x` holds.
         case assertion
         /// Consume the text group `x` matched (`y == 1` ignores case).
         case backReference
-        /// Start a look-around: `x == 1` is negative; `y` is the offset of the instruction after its ``lookEnd``.
+        /// Start a look-around: `x == 1` is negative; `y` is the offset of the instruction after its ``lookEnd``. A conditional's
+        /// look-around has `x == 4` (positive) or `x == 5` (negative); there `y` is where to go if the body fails.
         case lookStart
-        /// End a look-around body (`x == 1` is negative).
+        /// End a look-around body (`x == 1` is negative). `x == 4` ends a positive condition; `x == 5` ends a negative one, whose body
+        /// succeeding makes the condition false, so the match goes on at `pc + y`.
         case lookEnd
         /// Start a group that is matched once and never re-entered.
         case atomicStart
@@ -36,6 +38,12 @@ struct BTInstruction: Equatable, Sendable {
         case keep
         /// Never matches.
         case fail
+        /// Call group `y` as a subroutine: continue at `pc + x`, the start of the group's code (PCRE2 `(?1)`, `(?R)`).
+        case call
+        /// Continue at `pc + 1` if group `x` has captured, else at `pc + y` (PCRE2 `(?(1)…|…)`).
+        case condGroup
+        /// Continue at `pc + 1` if inside a call (of group `x`, or any when `x == -1`), else at `pc + y` (PCRE2 `(?(R)…|…)`).
+        case condRecursion
         case match
     }
 

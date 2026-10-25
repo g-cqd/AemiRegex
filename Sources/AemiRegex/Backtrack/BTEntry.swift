@@ -13,6 +13,10 @@ struct BTEntry: Sendable {
         case lookNegative
         /// A finished atomic group or look-around: nothing to do when it is popped.
         case inert
+        /// A call was made: when popped, the current call becomes `a` again and the frame is dropped.
+        case callEnter
+        /// A call returned from frame `a`: when popped, that frame is current again.
+        case callExit
     }
 
     var tag: Tag

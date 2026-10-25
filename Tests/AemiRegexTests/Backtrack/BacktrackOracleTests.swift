@@ -21,6 +21,10 @@ struct BacktrackOracleTests {
             report.mismatches.isEmpty, "\(report.mismatches.count) of \(cases.count): \(report.mismatches.prefix(12))")
         let ranOutOfBudget = report.skipped.filter { $0.hasPrefix("budget") }
         #expect(ranOutOfBudget.isEmpty, "\(ranOutOfBudget.count) cases used up the budget: \(ranOutOfBudget.prefix(6))")
+        if fixture.contains("curated") {
+            // Every curated pattern is one the engine claims to run: an unsupported one is a gap, not a skip.
+            #expect(report.skipped.isEmpty, "unsupported: \(Set(report.skipped).sorted().prefix(12))")
+        }
         #expect(report.skipped.count * 50 < cases.count, "skipped \(report.skipped.count): \(report.skipped.prefix(6))")
     }
 }

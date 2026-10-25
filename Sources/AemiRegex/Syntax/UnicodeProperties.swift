@@ -7,16 +7,6 @@ enum UnicodeProperties {
     private static let scriptNames: [String] = GeneratedUnicodeTables.scriptNames.split(whereSeparator: \.isWhitespace)
         .map(String.init)
 
-    /// The category aliases, keyed by canonical name: `Uppercase_Letter` is found as `Uppercaseletter`, and maps to `Lu`.
-    private static let aliases: [String: String] = {
-        var result: [String: String] = [:]
-        for pair in GeneratedUnicodeTables.categoryAliases.split(whereSeparator: \.isWhitespace) {
-            let parts = pair.split(separator: "=")
-            if parts.count == 2 { result[canonicalName(String(parts[0]))] = String(parts[1]) }
-        }
-        return result
-    }()
-
     /// The scripts, keyed by canonical name: `Old_Italic` is found as `Olditalic`.
     private static let scriptsByName: [String: Int] = {
         var result: [String: Int] = [:]
@@ -64,6 +54,32 @@ enum UnicodeProperties {
         return ranges(GeneratedUnicodeTables.scriptData, GeneratedUnicodeTables.scriptOffsets, index)
     }
 
+    /// The category aliases spelled exactly, `Uppercase_Letter` to `Lu`, for ECMAScript, which accepts no other spelling.
+    private static let exactAliases: [String: String] = {
+        var result: [String: String] = [:]
+        for pair in GeneratedUnicodeTables.categoryAliases.split(whereSeparator: \.isWhitespace) {
+            let parts = pair.split(separator: "=")
+            if parts.count == 2 { result[String(parts[0])] = String(parts[1]) }
+        }
+        return result
+    }()
+
+    /// The same aliases keyed by canonical name: `Uppercase_Letter` is found as `Uppercaseletter`.
+    private static let aliases: [String: String] = Dictionary(
+        uniqueKeysWithValues: exactAliases.map { (canonicalName($0.key), $0.value) })
+
+    /// The category with this code: a two-letter one (`Lu`), a one-letter group (`L`), `Cn`, or `LC` (cased letters). PCRE2 reads these.
+    /// - Returns: The set, or `nil` when `code` is none of them (a long name is not a code).
+    static func category(code: String) -> ScalarSet? {
+        code == "LC" ? union(["Lu", "Ll", "Lt"]) : category(code)
+    }
+
+    /// The category spelled exactly as ECMAScript spells it: a code, or an exact long name such as `Uppercase_Letter`.
+    static func exactCategory(_ name: String) -> ScalarSet? {
+        if let set = category(code: name) { return set }
+        return exactAliases[name].flatMap { category(code: $0) }
+    }
+
     /// The one-letter groups and their members. `C` also holds every unassigned code point, added by ``category(_:)``.
     private static let groups: [String: [String]] = [
         // @dl:accept -- a table of constants: the rows are alike because they are data
@@ -102,7 +118,8 @@ enum UnicodeProperties {
         ranges(GeneratedUnicodeTables.categoryData, GeneratedUnicodeTables.categoryOffsets, index)
     }
 
-    private static func ranges(_ data: [UInt32], _ offsets: [Int], _ index: Int) -> ScalarSet {
+    /// The ranges of table `index` of a generated table, which stores each as an inclusive `lo, hi` pair.
+    static func ranges(_ data: [UInt32], _ offsets: [Int], _ index: Int) -> ScalarSet {
         var result: [ClosedRange<UInt32>] = []
         result.reserveCapacity(offsets[index + 1] - offsets[index])
         for range in offsets[index] ..< offsets[index + 1] { result.append(data[2 * range] ... data[2 * range + 1]) }

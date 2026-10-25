@@ -49,4 +49,16 @@ struct BacktrackingSearchAPITests {
         #expect(match[group: 1] == nil)
         #expect(match[group: 2] == 0 ..< 1)
     }
+
+    @Test func `a name may repeat in different alternatives in ECMAScript only`() throws {
+        let pattern = try BacktrackingPattern("(?<n>a)|(?<n>b)", dialect: .ecmaScript)
+        #expect(pattern.groupIndices(named: "n") == [1, 2])
+        #expect(pattern.groupIndex(named: "n") == 1)
+        #expect(pattern.groupIndex(named: "other") == nil)
+        #expect(pattern.groupIndices(named: "other").isEmpty)
+        #expect(throws: PatternError.syntax(.duplicateGroupName, offset: 11)) {
+            try BacktrackingPattern("(?<n>a)|(?<n>b)", dialect: .pcre2)
+        }
+        #expect(throws: PatternError.self) { try BacktrackingPattern("(?<n>a)(?<n>b)", dialect: .ecmaScript) }
+    }
 }

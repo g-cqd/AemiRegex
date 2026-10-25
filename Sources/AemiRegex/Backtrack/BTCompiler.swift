@@ -18,10 +18,11 @@ struct BTCompiler {
     ) throws(PatternError) -> BTProgram {
         var compiler = BTCompiler(tree: tree, dialect: dialect, limits: limits)
         var code = try compiler.run()
+        try patchCalls(in: &code)
         code.append(BTInstruction(.match))
         return BTProgram(
             code: ContiguousArray(code), sets: tree.sets, captureCount: tree.captureCount,
-            registerCount: compiler.registerCount, dialect: dialect)
+            registerCount: compiler.registerCount, dialect: dialect, names: tree.names)
     }
 
     private mutating func run() throws(PatternError) -> [BTInstruction] {
@@ -69,6 +70,13 @@ struct BTCompiler {
                 return BTFragment(code: [BTInstruction(.fail)], canBeEmpty: false, groups: nil)
             case .keep:
                 return BTFragment(code: [BTInstruction(.keep)], canBeEmpty: true, groups: nil)
+            case .call(let group):
+                return call(group: group)
+            case .namedCall(let name):
+                guard let group = tree.names[name]?.first else { throw .syntax(.invalidGroupName, offset: 0) }
+                return call(group: group)
+            case .conditional(let condition):
+                return try conditional(condition, children)
             case .set(let index):
                 let ranges = tree.sets[index].scalars.ranges
                 if ranges.count == 1, let only = ranges.first, only.lowerBound == only.upperBound {
@@ -86,15 +94,17 @@ struct BTCompiler {
             case .backReference(let group, let ignoreCase):
                 return reference(group: group, ignoreCase: ignoreCase, backward: backward)
             case .namedBackReference(let name, let ignoreCase):
-                guard let group = tree.names[name] else { throw .syntax(.invalidGroupName, offset: 0) }
-                return reference(group: group, ignoreCase: ignoreCase, backward: backward)
+                guard let groups = tree.names[name] else { throw .syntax(.invalidGroupName, offset: 0) }
+                return reference(groups: groups, ignoreCase: ignoreCase, backward: backward)
             case .group(let capture):
                 let body = children[0]
                 let (open, close) = backward ? (2 * capture + 1, 2 * capture) : (2 * capture, 2 * capture + 1)
+                // PCRE2 closes a group with a mark that lets a subroutine call to the group return.
+                let closing = BTInstruction(.save, close, dialect == .pcre2 ? 1 : 0)
                 let own = capture ..< capture + 1
                 groupLengths[capture] = (body.minLength, body.maxLength)
                 return BTFragment(
-                    code: [BTInstruction(.save, open)] + body.code + [BTInstruction(.save, close)],
+                    code: [BTInstruction(.save, open)] + body.code + [closing],
                     canBeEmpty: body.canBeEmpty, groups: BTFragment.merged(body.groups, own),
                     minLength: body.minLength, maxLength: body.maxLength)
             case .concatenation:
@@ -116,6 +126,23 @@ struct BTCompiler {
                     canBeEmpty: body.canBeEmpty, groups: body.groups, minLength: body.minLength,
                     maxLength: body.maxLength)
         }
+    }
+
+    /// A subroutine call whose target is filled in once the whole program exists (see ``patchCalls(in:)``). Its length is unknown.
+    private func call(group: Int) -> BTFragment {
+        BTFragment(code: [BTInstruction(.call, 0, group)], canBeEmpty: true, groups: nil, minLength: 0, maxLength: nil)
+    }
+
+    /// A back reference by name. When several groups share the name, the one that took part is used; if none did, ECMAScript matches empty.
+    private func reference(groups: [Int], ignoreCase: Bool, backward: Bool) -> BTFragment {
+        guard groups.count > 1 else { return reference(group: groups[0], ignoreCase: ignoreCase, backward: backward) }
+        var tail: [BTInstruction] = []
+        for group in groups.reversed() {
+            let use = reference(group: group, ignoreCase: ignoreCase, backward: backward).code
+            tail =
+                [BTInstruction(.condGroup, group, use.count + 2)] + use + [BTInstruction(.jump, tail.count + 1)] + tail
+        }
+        return BTFragment(code: tail, canBeEmpty: true, groups: nil, minLength: 0, maxLength: nil)
     }
 
     private func reference(group: Int, ignoreCase: Bool, backward: Bool) -> BTFragment {
