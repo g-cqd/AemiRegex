@@ -41,14 +41,33 @@ enum RepositoryHygiene {
 
     /// The tracked files of the repository, from `git ls-files`; empty when git is unavailable.
     static func trackedPaths() -> [String] {
+        let root = DocumentationLayout.repositoryRoot.path
         let process = Process()
-        process.executableURL = URL(filePath: "/usr/bin/git")
-        process.arguments = ["-C", DocumentationLayout.repositoryRoot.path, "ls-files", "-z"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        guard (try? process.run()) != nil else { return [] }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        // `env` finds git wherever the image installs it; `safe.directory` stops git refusing a checkout that a
+        // different user owns (a CI container mounts the workspace that way).
+        process.executableURL = URL(filePath: "/usr/bin/env")
+        process.arguments = ["git", "-c", "safe.directory=\(root)", "-C", root, "ls-files", "-z"]
+        let output = Pipe()
+        let errors = Pipe()
+        process.standardOutput = output
+        process.standardError = errors
+        do {
+            try process.run()
+        } catch {
+            report("could not start git: \(error)")
+            return []
+        }
+        // Read both pipes before waiting, so a full pipe cannot block git.
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        let message = errors.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
+        if process.terminationStatus != 0 {
+            report("git exited \(process.terminationStatus): \(String(decoding: message, as: UTF8.self))")
+        }
         return String(decoding: data, as: UTF8.self).split(separator: "\0").map(String.init)
+    }
+
+    private static func report(_ text: String) {
+        FileHandle.standardError.write(Data("RepositoryHygiene: \(text)\n".utf8))
     }
 }
