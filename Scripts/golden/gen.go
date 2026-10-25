@@ -21,17 +21,20 @@ var patterns = []string{
 	`\x41`, `\x{263a}`, `\n\t`, `\.`, `\\`, `\Qa.b\E`, `\-`, `(?P<n>a)b`, `(?<n>a)b`, `(?P<x>a)(?P<y>b)?`,
 	`é`, `[é]`, `[^a]`, `[é-ü]+`, `日本`, `.é`, `[^é]`, `\x{10FFFF}|\x{80}`,
 	`\pL`, `\p{Lu}`, `\PL`, `\pN+`, `[\pL\d]+`, `\p{^Lu}`, `[^\pL]`, `\pZ+`, `\p{Sc}`, `\p{Mn}`, `\p{Nd}+`,
+	`\p{greek}`, `\p{Old Italic}`, `\p{old_italic}`, `\p{Uppercase_Letter}`, `\p{Any}`, `\p{Assigned}`, `\p{Ascii}`, `\p{Lc}`, `\p{LC}`, `\p{punct}`, `\p{digit}`, `\p{C}`, `\p{Cn}`, `\P{Cn}`, `\p{Letter}+`, `\p{GR-EEK}`,
+	`\p{Greek}`, `\p{Latin}+`, `\p{Han}+`, `\P{Greek}`, `[\p{Greek}\p{Cyrillic}]+`, `\p{Hiragana}+`, `\p{Common}`, `[^\p{Latin}]`, `\pL\p{Greek}`,
+	`(?i)é`, `(?i)k`, `(?i)s+`, `(?i)σ`, `(?i)ǆ`, `(?i)[α-ω]+`, `(?i)µ`, `(?i)ß`, `(?i)\p{Lu}+`, `(?i)\P{Lu}`, `(?i)[^a-c]+`, `(?i)\w+`, `(?i)\W`, `(?i)[[:upper:]]+`, `(?i)[[:^upper:]]`, `(?i)\pL+`, `(?i)ǅ`, `(?i)Привет`, `(?i)ΐ`,
 	`(a+)+b`, `(a|aa)+$`, `((a*)*)*`, `(a{2}){3}`, `(?:a{1,2}){2,3}`, `a{1000}`, `\s*foo\s*`, `(\w+)\s(\w+)`, `^(\w+)@(\w+)\.com$`,
 }
 
 var haystacks = []string{
 	``, `a`, `b`, `abc`, `aaa`, `aab`, `abab`, `baaac`, `foo bar`, "foo\nbar\n", "a\n\nb", `héllo wörld`,
 	`日本語 abc`, `xéx`, `ABC aBc`, `123 abc_9`, `aaabbb`, `abcd`, "\u263a", `a-z]`, `foo`, `bob@example.com`,
-	"\U0010ffff\u0080", "Aé日٣€ǅ", "a\u0301 x",
+	"\U0010ffff\u0080", "Aé日٣€ǅ", "a\u0301 x", "KkK ſSs", "σςΣ", "éÉ", "ǄǅǆDz", "µΜμ", "ßẞ", "ΑαΩω", "Привет мир ПРИВЕТ", "日本語ひらがなカタカナ", "αβγ ABC", "ΐΐ", "\u0378", "𐌀x",
 }
 
 var invalid = []string{
-	`(`, `)`, `a)`, `[a`, `[z-a]`, `*`, `a**`, `+a`, `?`, `a{2,1}`, `a{1001}`, `\8`, `(?z)`, `\p{Foo}`, `\p{`, `\p`,
+	`(`, `)`, `a)`, `[a`, `[z-a]`, `*`, `a**`, `+a`, `?`, `a{2,1}`, `a{1001}`, `\8`, `(?z)`, `\p{Foo}`, `\p{`, `\p`, `\p{Latn}`, `\p{Script=Greek}`, `\pg`, `\p{}`,
 	`(?P<>a)`, `\`, `[[:foo:]]`, `x{2}{3}`, `(?i`, `(?`, `\x{110000}`, `\xZ`, `[a-\d]`, `(?P<n`, `a|*`, `(*)`, `\pX`, `a++`, `a*+`, `(?=a)`, `(?!a)`, `(?<=a)`, `\1`,
 }
 

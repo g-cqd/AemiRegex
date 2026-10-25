@@ -4,15 +4,16 @@ enum ClassCatalog {
     static let space = ScalarSet(normalizing: [0x09 ... 0x0A, 0x0C ... 0x0D, 0x20 ... 0x20])
     static let word = ScalarSet(normalizing: [0x30 ... 0x39, 0x41 ... 0x5A, 0x5F ... 0x5F, 0x61 ... 0x7A])
 
-    /// The class for a Perl escape letter, or `nil` when the letter names none.
-    static func perl(_ letter: UInt32) -> ScalarSet? {
+    /// The class for a Perl escape letter, as the positive set and whether the letter negates it (`\D` is `\d`, negated), or `nil`.
+    /// Negation comes last so that case folding can be applied to the positive set first, as Go does.
+    static func perl(_ letter: UInt32) -> (set: ScalarSet, negated: Bool)? {
         switch letter {
-            case 0x64: digit
-            case 0x44: digit.negated()
-            case 0x73: space
-            case 0x53: space.negated()
-            case 0x77: word
-            case 0x57: word.negated()
+            case 0x64: (digit, false)
+            case 0x44: (digit, true)
+            case 0x73: (space, false)
+            case 0x53: (space, true)
+            case 0x77: (word, false)
+            case 0x57: (word, true)
             default: nil
         }
     }

@@ -31,7 +31,7 @@ extension Parser {
             }
         }
         var set = ScalarSet(normalizing: ranges).union(named)
-        if flags.ignoreCase { set = set.foldedASCII() }
+        if flags.ignoreCase { set = set.folded() }
         try emitSet(negated ? set.negated() : set)
     }
 
@@ -78,6 +78,6 @@ extension Parser {
         for scalar in scalars[nameStart ..< end] { name.unicodeScalars.append(Unicode.Scalar(scalar) ?? "?") }
         guard let set = ClassCatalog.posix(name) else { throw .syntax(.unknownClassName, offset: offset(position)) }
         position = end + 2
-        return negated ? set.negated() : set
+        return foldedThenNegated(set, negated: negated)
     }
 }

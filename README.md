@@ -8,7 +8,7 @@ and one machine it is faster than `NSRegularExpression`, Swift `Regex` and Go's 
 per-file workload** (median 2.2x) and than PCRE2 with JIT on most (median 2.2x; it wins five of 14 rows). It is not the fastest engine and
 does not claim to be; see `docs/research/engine-comparison-2026-10.md` for the numbers, the causes, the safety nets and the work queue. A
 small C target (NEON, SSSE3, scalar) holds the multi-literal prefilter kernel. I-Regexp (RFC 9485) is built, whole-string by default;
-`\p{…}` works over general categories. Scripts, Unicode case folding, a `String` API, ECMAScript and PCRE2 are not built yet.
+`\p{…}` works over general categories and scripts, and `(?i)` folds Unicode. A `String` API, ECMAScript and PCRE2 are not built yet.
 
 ```swift
 import AemiRegex

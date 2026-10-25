@@ -8,8 +8,6 @@ struct Parser {
     let reverse: Bool
     /// The whole program must match the entire text: anchors are added around the finished alternation, not written into the text.
     let wholeString: Bool
-    /// General categories as XML Schema defines them (I-Regexp), not as RE2 does.
-    let xsdCategories: Bool
     var position = 0
     var flags = Flags()
     var frames: [Frame]
@@ -19,24 +17,21 @@ struct Parser {
     /// Instructions emitted so far, counted conservatively, to enforce ``Pattern/Limits/maxProgramSize``.
     var emitted = 0
 
-    private init(_ pattern: String, limits: Pattern.Limits, reverse: Bool, wholeString: Bool, xsdCategories: Bool) {
+    private init(_ pattern: String, limits: Pattern.Limits, reverse: Bool, wholeString: Bool) {
         let text = PatternText(pattern)
         scalars = text.scalars
         offsets = text.offsets
         self.limits = limits
         self.reverse = reverse
         self.wholeString = wholeString
-        self.xsdCategories = xsdCategories
         frames = [Frame(kind: .root, openOffset: 0, savedFlags: Flags())]
     }
 
     static func compile(
-        _ pattern: String, limits: Pattern.Limits, reverse: Bool = false, wholeString: Bool = false,
-        xsdCategories: Bool = false
+        _ pattern: String, limits: Pattern.Limits, reverse: Bool = false, wholeString: Bool = false
     ) throws(PatternError) -> Program {
         guard pattern.utf8.count <= limits.maxPatternBytes else { throw .limit(.patternLength) }
-        var parser = Parser(
-            pattern, limits: limits, reverse: reverse, wholeString: wholeString, xsdCategories: xsdCategories)
+        var parser = Parser(pattern, limits: limits, reverse: reverse, wholeString: wholeString)
         return try parser.parse()
     }
 
@@ -130,7 +125,7 @@ struct Parser {
 
     mutating func emitLiteral(_ scalar: UInt32) throws(PatternError) {
         let set = ScalarSet(scalar)
-        try emitSet(flags.ignoreCase ? set.foldedASCII() : set)
+        try emitSet(flags.ignoreCase ? set.folded() : set)
     }
 
     // MARK: Groups

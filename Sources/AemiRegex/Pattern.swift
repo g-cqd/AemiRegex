@@ -54,13 +54,12 @@ public struct Pattern: Sendable {
     }
 
     init(
-        _ pattern: String, limits: Limits = .default, engine: Engine, wholeString: Bool = false,
-        xsdCategories: Bool = false
+        _ pattern: String, limits: Limits = .default, engine: Engine, wholeString: Bool = false
     ) throws(PatternError) {
         let program = try Parser.compile(
-            pattern, limits: limits, wholeString: wholeString, xsdCategories: xsdCategories)
+            pattern, limits: limits, wholeString: wholeString)
         let plan = try Self.makePlan(
-            pattern, program, limits: limits, engine: engine, wholeString: wholeString, xsdCategories: xsdCategories)
+            pattern, program, limits: limits, engine: engine, wholeString: wholeString)
         self.program = program
         self.plan = plan
         let prefilter = plan == nil ? Prefilter(.none) : Prefilter(analyzing: program)
@@ -83,11 +82,11 @@ public struct Pattern: Sendable {
     }
 
     private static func makePlan(
-        _ pattern: String, _ program: Program, limits: Limits, engine: Engine, wholeString: Bool, xsdCategories: Bool
+        _ pattern: String, _ program: Program, limits: Limits, engine: Engine, wholeString: Bool
     ) throws(PatternError) -> DFAPlan? {
         guard engine == .automatic else { return nil }
         let reverse = try Parser.compile(
-            pattern, limits: limits, reverse: true, wholeString: wholeString, xsdCategories: xsdCategories)
+            pattern, limits: limits, reverse: true, wholeString: wholeString)
         return DFAPlan(reverse: reverse, forwardClasses: ByteClasses(program), reverseClasses: ByteClasses(reverse))
     }
 
@@ -109,7 +108,7 @@ public struct Pattern: Sendable {
             case .iRegexp: source = try IRegexp.translate(pattern, limits: limits)
         }
         let whole = (matching ?? (syntax == .iRegexp ? .wholeString : .search)) == .wholeString
-        try self.init(source, limits: limits, engine: .automatic, wholeString: whole, xsdCategories: syntax == .iRegexp)
+        try self.init(source, limits: limits, engine: .automatic, wholeString: whole)
     }
 
     /// The number of capture groups, not counting the whole match.

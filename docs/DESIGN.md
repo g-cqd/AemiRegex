@@ -58,7 +58,7 @@ wrote, because the translator makes every check it can before the RE2 parser see
 
 ## Known gaps (each has a roadmap item; none is claimed as supported)
 
-- Unicode: `\p{…}`, `\P{…}`, Unicode case folding. `(?i)k` does not match U+212A, which RE2 and Go do.
+- `\w`, `\d`, `\s` and `\b` are ASCII (RE2 and Go too); a Unicode word boundary is not built.
 - A `String` and `Substring` API (`Range<String.Index>`); today only `[UInt8]`.
 - A DFA that fills its cache falls back to the Pike VM, which is correct but slower than ICU.
 - Input is `[UInt8]`; `Span` needs macOS 26 and the floor is 15.

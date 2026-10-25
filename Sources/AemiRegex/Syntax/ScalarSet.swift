@@ -42,24 +42,6 @@ struct ScalarSet: Equatable, Sendable {
         return ScalarSet(normalizing: result)
     }
 
-    /// The set plus the other-case ASCII letter of each ASCII letter in it.
-    ///
-    /// Only ASCII letters fold; full Unicode simple case folding is not implemented yet.
-    func foldedASCII() -> ScalarSet {
-        var extra: [ClosedRange<UInt32>] = []
-        for range in ranges {
-            if range.overlaps(0x61 ... 0x7A) {
-                let lower = range.clamped(to: 0x61 ... 0x7A)
-                extra.append((lower.lowerBound - 32) ... (lower.upperBound - 32))
-            }
-            if range.overlaps(0x41 ... 0x5A) {
-                let upper = range.clamped(to: 0x41 ... 0x5A)
-                extra.append((upper.lowerBound + 32) ... (upper.upperBound + 32))
-            }
-        }
-        return extra.isEmpty ? self : ScalarSet(normalizing: ranges + extra)
-    }
-
     /// `\n`, the one scalar `.` does not match by default.
     static let newline = ScalarSet(0x0A)
 }
