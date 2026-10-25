@@ -1,6 +1,6 @@
 ---
 status: not-started
-blocked-by: ["0004"]
+blocked-by: []
 date: 2026-10-25
 ---
 
@@ -9,7 +9,8 @@ date: 2026-10-25
 `\p{L}`, `\pN`, `\p{Greek}`, `\P{…}` for RE2 syntax, Unicode simple case folding for `(?i)` (so `(?i)k` matches U+212A, as RE2 and Go
 do), and a decision on the table source. `AemiUnicode` holds only tokenizer sets, NFD and lowercase, not categories, scripts or fold
 orbits; the options are extending it in the Aemi repository (a shared package: its own worktree, review and pin) or generating tables from
-Go's `unicode` package here. Decide with the sizes and the version dependence measured.
+Go's `unicode` package here. Decide with the sizes and the version dependence measured. ADR-0008 holds the interim source (the standard library, general categories only,
+46.6 ms on first use) and its numbers; scripts, binary properties and case folding are not covered by it.
 
 ## Gate
 

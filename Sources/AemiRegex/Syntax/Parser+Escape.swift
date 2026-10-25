@@ -57,7 +57,7 @@ extension Parser {
                     case 0x41: return .assertion(.beginText)
                     default: return .assertion(.endText)
                 }
-            case 0x70, 0x50: throw .syntax(.unsupported, offset: start)
+            case 0x70, 0x50: return .set(try category(negated: c == 0x50, start: start))
             case 0x51:
                 guard !inClass else { throw .syntax(.invalidEscape, offset: start) }
                 return .quote
@@ -65,6 +65,37 @@ extension Parser {
                 guard c < 0x80, !Self.isAlphanumeric(c) else { throw .syntax(.invalidEscape, offset: start) }
                 return .scalar(c)
         }
+    }
+
+    /// `\pL`, `\p{Lu}` or `\p{^Lu}` after the `p` (or `P`): a general category, negated by `\P` and by `^` (twice cancels).
+    private mutating func category(negated: Bool, start: Int) throws(PatternError) -> ScalarSet {
+        guard let first = peek() else { throw .syntax(.unexpectedEnd, offset: start) }
+        var negated = negated
+        var name = ""
+        if first == 0x7B {
+            position += 1
+            if peek() == 0x5E {
+                negated.toggle()
+                position += 1
+            }
+            while let c = peek(), c != 0x7D {
+                guard name.unicodeScalars.count < 8, let scalar = Unicode.Scalar(c) else {
+                    throw .syntax(.unknownClassName, offset: start)
+                }
+                name.unicodeScalars.append(scalar)
+                position += 1
+            }
+            guard peek() == 0x7D else { throw .syntax(.unknownClassName, offset: start) }
+            position += 1
+        } else {
+            guard let scalar = Unicode.Scalar(first) else { throw .syntax(.unknownClassName, offset: start) }
+            name.unicodeScalars.append(scalar)
+            position += 1
+        }
+        guard let set = UnicodeCategories.set(named: name, xsd: xsdCategories) else {
+            throw .syntax(.unknownClassName, offset: start)
+        }
+        return negated ? set.negated() : set
     }
 
     private static func isAlphanumeric(_ c: UInt32) -> Bool {
