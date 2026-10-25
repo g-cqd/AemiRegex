@@ -70,4 +70,5 @@ Built: RE2 syntax, I-Regexp with whole-string matching, `\p` over categories and
 tables (ADR-0009; Go's Unicode 17.0.0); a `String` API; CI (green on Linux and macOS); and `BacktrackingPattern` (ADR-0011) for ECMAScript and
 PCRE2, checked against `node` and `libpcre2`. Completed: RE2, I-Regexp, Unicode (properties, fold), ECMAScript (u/v flags, properties, repeated names), PCRE2 (subroutines, conditionals, flags),
 Backtracker (ADR-0011), String/Substring API (0011), CI gates (0012), and AemiJSON migration (0013).
-In progress: closing the remaining Rust gaps (0006). Blocked: native x86_64 timing (0014).
+Rust performance tracking is paused by owner direction (0006); preserve its measurements and untested hypotheses in
+`docs/research/engine-comparison-2026-10-25.md` and the roadmap, without scheduling comparison runs. Native x86_64 timing (0014) remains unavailable.

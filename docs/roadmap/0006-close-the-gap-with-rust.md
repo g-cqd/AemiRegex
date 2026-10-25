@@ -10,7 +10,9 @@ The owner asked for this to be on the roadmap and **after** I-Regexp and Unicode
 third; median 2.2x behind Rust per file. Each item below is a hypothesis with a measured row, to be probed before it is built, and kept
 only if its row moves.
 
-## The queue, by measured gap
+## Archived hypotheses, by measured gap
+
+These are retained research, not an active queue. No Rust comparison or optimization is scheduled.
 
 1. **End-anchored patterns: done.** `[ \t]*$` went from 1.77 ms to 0.06 ms (about 30x; Rust 0.01 ms). A pattern whose every match must
    end at `\z` is searched backwards from the end by the reverse DFA, which reads only what the match covers. Whether Rust does exactly this
@@ -23,7 +25,8 @@ only if its row moves.
 
 ## Gate
 
-The comparison rerun after each step; the row moved, or the step is reverted. The README keeps saying "third" until the table does not.
+Historical gate: comparisons were rerun after each performance step and changes were kept only when their row moved.
+Tracking is now paused; the tables and harness remain for reproducibility, not as a current performance target.
 
 ## State (2026-10-25, third run)
 
@@ -43,4 +46,15 @@ ergonomics, stability, and consumer integration (AemiJSON).
 - Match counting: avoids running the Pike VM for capture groups when only bounds are needed.
 - Terminal-byte search: SIMD skip to single ending bytes (`captures` 2.63 ms to 0.46 ms, outperforming Rust's 0.61 ms).
 - Overall: median 1.64x behind Rust ASCII per file across 14 workloads; 1 row faster than Rust, 5 rows faster than PCRE2 JIT, faster than
-  Go, ICU (`NSRegularExpression`), and Swift `Regex` on all rows.
+  ICU (`NSRegularExpression`) and Swift `Regex` on all rows; faster than Go on 13 of 14 per-file rows.
+
+## Evidence retained
+
+- `docs/research/engine-comparison-2026-10.md`: earlier corpus, engine standing, profiling and safety findings.
+- `docs/research/engine-comparison-2026-10-25.md`: final frozen-corpus tables, method change, intermediate results and open questions.
+- `docs/research/neon-assembly-2026-10.md`: SIMD/C probe; its correction is recorded in the diary and ADR-0004.
+- `Scripts/bench-compare.sh`, `Scripts/bench-table.py`, and `Benchmarks/Comparison/`: workload definitions and engine harnesses.
+- `docs/diary/2026-10-24-01.md` and `2026-10-25-02.md`: experiments, failed hypotheses and mutation evidence.
+
+The frozen corpus itself was temporary and is not committed. The reports retain its size, file count and source, not a content hash.
+Do not treat a future snapshot as the same input or compare its timings as a controlled before/after experiment.
