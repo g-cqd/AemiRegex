@@ -3,4 +3,5 @@ struct SearchCounts: Equatable, Sendable {
     var literal = 0
     var dfa = 0
     var pike = 0
+    var endAnchored = 0
 }
