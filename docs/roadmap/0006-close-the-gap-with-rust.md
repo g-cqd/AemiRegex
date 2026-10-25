@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 blocked-by: []
 date: 2026-10-25
 ---
@@ -31,3 +31,16 @@ Done: end-anchored patterns (earlier), `matchCount` and `isMatch` without captur
 now faster than Rust's 0.61 on that one row). Measurements and the one-step-at-a-time table: `docs/research/engine-comparison-2026-10-25.md`.
 Open, in order: the dense-match rows (`\w*`, `\b`, `(?m)$`), per-call overhead on tiny haystacks, Teddy verification, class-trie merging for `\p{L}`,
 and an RE2-style clear-and-continue when the DFA cache is full. Whether Rust uses the same strategy for `captures` is unprobed.
+
+## Decision (2026-10-25)
+
+Work on closing further micro-benchmarking gaps against Rust's `regex` crate is halted per user direction, to prioritize public API surface,
+ergonomics, stability, and consumer integration (AemiJSON).
+
+### Final Benchmark Result Summary
+
+- End-anchored search: reverse DFA scan from the text end (`[ \t]*$` 1.77 ms to 0.04 ms).
+- Match counting: avoids running the Pike VM for capture groups when only bounds are needed.
+- Terminal-byte search: SIMD skip to single ending bytes (`captures` 2.63 ms to 0.46 ms, outperforming Rust's 0.61 ms).
+- Overall: median 1.64x behind Rust ASCII per file across 14 workloads; 1 row faster than Rust, 5 rows faster than PCRE2 JIT, faster than
+  Go, ICU (`NSRegularExpression`), and Swift `Regex` on all rows.
