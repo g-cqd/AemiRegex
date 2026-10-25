@@ -4,4 +4,6 @@ struct SearchCounts: Equatable, Sendable {
     var dfa = 0
     var pike = 0
     var endAnchored = 0
+    /// Searches that jumped between occurrences of the pattern's terminal byte.
+    var terminal = 0
 }

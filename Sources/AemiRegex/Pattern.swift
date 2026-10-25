@@ -6,6 +6,10 @@ public struct Pattern: Sendable {
     let program: Program
     let prefilter: Prefilter
     let literals: LiteralSet?
+    /// The byte every match ends with and nothing else consumes, so a search can jump between its occurrences (see ``TerminalByte``).
+    let terminalByte: UInt8?
+    /// Whether searches jump between occurrences of ``terminalByte``: it has one, and no prefix or literal set guides the search better.
+    let jumpsToTerminalByte: Bool
     let plan: DFAPlan?
     let pool: ScratchPool
 
@@ -29,6 +33,9 @@ public struct Pattern: Sendable {
         self.prefilter = prefilter
         let markStart = prefilter.kind != .none
         literals = plan == nil || !markStart ? nil : LiteralSet(program)
+        terminalByte = plan == nil ? nil : TerminalByte.find(in: program)
+        // A prefix the prefilter can skip to is the better guide, so the jump serves only the patterns without one.
+        jumpsToTerminalByte = terminalByte != nil && !markStart && literals == nil
         let cacheLimit = limits.maxDFACacheBytes
         pool = ScratchPool {
             SearchScratch(
@@ -129,15 +136,21 @@ public struct Pattern: Sendable {
     /// The number of matches ``matches(in:)`` would list, counted without building them.
     public func matchCount(in haystack: [UInt8]) -> Int {
         var count = 0
-        forEachMatch(in: haystack) { _ in
-            count += 1
-            return true
+        haystack.withUnsafeBufferPointer { buffer in
+            unsafe forEachMatch(inBuffer: ByteBuffer(buffer), needsCaptures: false) { _ in
+                count += 1
+                return true
+            }
         }
         return count
     }
 
     /// Whether there is a match. For a whole-string pattern: whether the whole text is one.
-    public func isMatch(in haystack: [UInt8]) -> Bool { firstMatch(in: haystack) != nil }
+    public func isMatch(in haystack: [UInt8]) -> Bool {
+        haystack.withUnsafeBufferPointer {
+            unsafe firstMatch(inBuffer: ByteBuffer($0), from: 0, needsCaptures: false) != nil
+        }
+    }
 
     /// What the forward DFA says about `haystack`, for tests of the cache limit.
     func forwardOutcome(in haystack: [UInt8]) -> LazyDFA.Outcome {

@@ -70,18 +70,7 @@ struct DFAPlan: Sendable {
         guard let matchPC = instructions.indices.last(where: { instructions[$0].op == .match }),
             instructions.contains(where: { $0.op == .assertion && $0.x == Int32(Assertion.endText.rawValue) })
         else { return false }
-        // predecessors[t]: the instructions with an edge to t, consuming edges included.
-        var predecessors = [[Int]](repeating: [], count: instructions.count)
-        for (pc, instruction) in instructions.enumerated() {
-            switch instruction.op {
-                case .jump: predecessors[pc + Int(instruction.x)].append(pc)
-                case .split:
-                    predecessors[pc + Int(instruction.x)].append(pc)
-                    predecessors[pc + Int(instruction.y)].append(pc)
-                case .save, .assertion, .byteRange, .byteSet: predecessors[pc + 1].append(pc)
-                case .match: break
-            }
-        }
+        let predecessors = program.predecessors(includingConsuming: true)
         var visited = [Bool](repeating: false, count: instructions.count)
         var stack = [matchPC]
         visited[matchPC] = true

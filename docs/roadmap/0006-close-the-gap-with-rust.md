@@ -24,3 +24,10 @@ only if its row moves.
 ## Gate
 
 The comparison rerun after each step; the row moved, or the step is reverted. The README keeps saying "third" until the table does not.
+
+## State (2026-10-25, third run)
+
+Done: end-anchored patterns (earlier), `matchCount` and `isMatch` without capture groups, and the terminal-byte jump (`captures` 2.51 to 0.46 ms,
+now faster than Rust's 0.61 on that one row). Measurements and the one-step-at-a-time table: `docs/research/engine-comparison-2026-10-25.md`.
+Open, in order: the dense-match rows (`\w*`, `\b`, `(?m)$`), per-call overhead on tiny haystacks, Teddy verification, class-trie merging for `\p{L}`,
+and an RE2-style clear-and-continue when the DFA cache is full. Whether Rust uses the same strategy for `captures` is unprobed.
