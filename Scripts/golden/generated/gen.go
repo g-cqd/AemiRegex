@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"os"
 	"regexp"
@@ -21,12 +22,11 @@ var rng = rand.New(rand.NewSource(0xA3E12026))
 
 func pick(items []string) string { return items[rng.Intn(len(items))] }
 
-func atom(depth int) string {
-	limit := 9
-	if depth <= 0 {
-		limit = 6
-	}
-	switch rng.Intn(limit) {
+// A pattern is built level by level, not by functions that call each other (docs/adr/0003): level 0 is a pool of leaf atoms, each later
+// level adds groups whose bodies are alternations drawn from the pool below, and a pattern is an alternation from the final pool.
+
+func leaf() string {
+	switch rng.Intn(6) {
 	case 0, 1:
 		return pick([]string{"a", "b", "c", "é"})
 	case 2:
@@ -35,39 +35,49 @@ func atom(depth int) string {
 		return pick([]string{"[ab]", "[^a]", "[a-c]", "[^bc]", `\w`, `\W`, `\s`, `[é-ü]`})
 	case 4:
 		return pick([]string{"a", "b", "c"})
-	case 5:
-		return pick([]string{`\b`, `\B`, "(?m:^)", "(?m:$)", "^", "$", `\A`, `\z`})
-	case 6:
-		return "(" + alternation(depth-1) + ")"
-	case 7:
-		return "(?:" + alternation(depth-1) + ")"
 	default:
-		return "(?i:" + alternation(depth-1) + ")"
+		return pick([]string{`\b`, `\B`, "(?m:^)", "(?m:$)", "^", "$", `\A`, `\z`})
 	}
 }
 
-func piece(depth int) string {
-	a := atom(depth)
+func piece(pool []string) string {
+	a := pool[rng.Intn(len(pool))]
 	if rng.Intn(3) != 0 {
 		return a
 	}
 	return a + pick([]string{"*", "+", "?", "*?", "+?", "??", "{2}", "{1,2}", "{0,2}?"})
 }
 
-func sequence(depth int) string {
+func sequence(pool []string) string {
 	var b strings.Builder
 	for i, n := 0, 1+rng.Intn(4); i < n; i++ {
-		b.WriteString(piece(depth))
+		b.WriteString(piece(pool))
 	}
 	return b.String()
 }
 
-func alternation(depth int) string {
+func alternation(pool []string) string {
 	parts := make([]string, 1+rng.Intn(3))
 	for i := range parts {
-		parts[i] = sequence(depth)
+		parts[i] = sequence(pool)
 	}
 	return strings.Join(parts, "|")
+}
+
+// pools returns the final pool: leaves, then two levels of groups.
+func pools() []string {
+	atoms := make([]string, 0, 160)
+	for i := 0; i < 30; i++ {
+		atoms = append(atoms, leaf())
+	}
+	for level := 0; level < 2; level++ {
+		below := append([]string{}, atoms...)
+		for i := 0; i < 60; i++ {
+			inner := alternation(below)
+			atoms = append(atoms, fmt.Sprintf(pick([]string{"(%s)", "(?:%s)", "(?i:%s)"}), inner))
+		}
+	}
+	return atoms
 }
 
 func haystack() string {
@@ -82,8 +92,9 @@ func haystack() string {
 
 func main() {
 	enc := json.NewEncoder(os.Stdout)
+	atoms := pools()
 	for written := 0; written < 2000; {
-		pattern := alternation(2)
+		pattern := alternation(atoms)
 		re, err := regexp.Compile(pattern)
 		if err != nil {
 			continue

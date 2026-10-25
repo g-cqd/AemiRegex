@@ -129,7 +129,7 @@ struct EngineAgreementTests {
         storage += [UInt8](repeating: 0x62, count: 70)
         storage.withUnsafeBufferPointer { whole in
             let body = UnsafeBufferPointer(rebasing: whole[0 ..< size])
-            #expect(pattern.forwardOutcome(in: body) == .noMatch, "\(size) bytes of a, then b past the end")
+            #expect(pattern.forwardOutcome(inBuffer: body) == .noMatch, "\(size) bytes of a, then b past the end")
         }
     }
 
@@ -143,5 +143,26 @@ struct EngineAgreementTests {
             // The match "b a…a" would start at 69 (the last poison byte) if the scan went below the floor of 70.
             #expect(pattern.reverseStart(in: whole, end: 70 + size, floor: 70) == nil, "\(size) a's above the floor")
         }
+    }
+
+    /// The DFA resolves an assertion one byte late, so a loop of empty-width steps that passes through an assertion could be walked once
+    /// more than the Pike VM walks it, which reorders the alternatives. Found by a generated pattern; Go's answers are the oracle.
+    @Test func `an empty-width loop through an assertion is answered as Go answers it`() throws {
+        let source = #"(?i:\B*?\B|a)*"#
+        let text = Array("BaBA".utf8)
+        // From Go: [[0 0] [1 1] [2 2] [3 3] [4 4]].
+        let expected: [Range<Int>] = [0 ..< 0, 1 ..< 1, 2 ..< 2, 3 ..< 3, 4 ..< 4]
+        #expect(try Pattern(source, engine: .pikeOnly).matches(in: text).map(\.range) == expected)
+        #expect(try Pattern(source).matches(in: text).map(\.range) == expected)
+    }
+
+    @Test(arguments: [
+        (#"(?:\b)*"#, false), (#"(?:\B*?\B|a)*"#, false), (#"\b+"#, false), ("(?:a*)*", true), (#"(?:\ba)*"#, true),
+        (#"\bfoo\b"#, true)
+    ])
+    func `a pattern whose empty-width loop contains an assertion is left to the Pike VM`(source: String, usesDFA: Bool)
+        throws
+    {
+        #expect(try Pattern(source).usesDFA == usesDFA)
     }
 }

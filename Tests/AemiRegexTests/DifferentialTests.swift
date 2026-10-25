@@ -14,42 +14,56 @@ struct DifferentialTests {
         var nullable: Bool
     }
 
-    private static func atom(_ rng: inout SplitMix64, depth: Int) -> Fragment {
-        switch Int.random(in: 0 ..< (depth > 0 ? 8 : 5), using: &rng) {
-            case 0, 1: return Fragment(text: String("abc".randomElement(using: &rng) ?? "a"), nullable: false)
-            case 2: return Fragment(text: ".", nullable: false)
-            case 3:
-                return Fragment(
-                    text: ["[ab]", "[^a]", "[a-c]", "[^bc]", #"\w"#, #"\W"#].randomElement(using: &rng) ?? "[ab]",
-                    nullable: false)
-            case 4: return Fragment(text: String("abc".randomElement(using: &rng) ?? "a"), nullable: false)
-            case 5:
-                let inner = alternation(&rng, depth: depth - 1)
-                return Fragment(text: "(\(inner.text))", nullable: inner.nullable)
-            case 6:
-                let inner = alternation(&rng, depth: depth - 1)
-                return Fragment(text: "(?:\(inner.text))", nullable: inner.nullable)
-            default:
-                let inner = alternation(&rng, depth: depth - 1)
-                return Fragment(text: "(?i:\(inner.text))", nullable: inner.nullable)
+    /// Patterns are built level by level, not by a function that calls itself (ADR-0003): level 0 is a pool of leaves, and each later level
+    /// adds groups whose bodies are alternations drawn from the pool below. A pattern is then an alternation drawn from the final pool.
+    private struct PatternPools {
+        private var atoms: [Fragment] = []
+
+        init(_ rng: inout SplitMix64) {
+            atoms = (0 ..< 30).map { _ in Self.leaf(&rng) }
+            for _ in 0 ..< 2 {
+                let below = atoms
+                for _ in 0 ..< 60 {
+                    let inner = Self.alternation(&rng, from: below)
+                    let wrapper = ["(%@)", "(?:%@)", "(?i:%@)"].randomElement(using: &rng) ?? "(%@)"
+                    atoms.append(
+                        Fragment(
+                            text: wrapper.replacingOccurrences(of: "%@", with: inner.text), nullable: inner.nullable))
+                }
+            }
         }
-    }
 
-    private static func piece(_ rng: inout SplitMix64, depth: Int) -> Fragment {
-        let base = atom(&rng, depth: depth)
-        guard !base.nullable, Int.random(in: 0 ..< 3, using: &rng) == 0 else { return base }
-        let op = ["*", "+", "?", "*?", "+?", "??", "{2}", "{1,2}", "{0,2}?"].randomElement(using: &rng) ?? "*"
-        return Fragment(text: base.text + op, nullable: op.hasPrefix("*") || op.hasPrefix("?") || op.hasPrefix("{0"))
-    }
+        mutating func pattern(_ rng: inout SplitMix64) -> String { Self.alternation(&rng, from: atoms).text }
 
-    private static func sequence(_ rng: inout SplitMix64, depth: Int) -> Fragment {
-        let parts = (0 ..< Int.random(in: 1 ... 4, using: &rng)).map { _ in piece(&rng, depth: depth) }
-        return Fragment(text: parts.map(\.text).joined(), nullable: parts.allSatisfy(\.nullable))
-    }
+        private static func leaf(_ rng: inout SplitMix64) -> Fragment {
+            switch Int.random(in: 0 ..< 4, using: &rng) {
+                case 0: return Fragment(text: ".", nullable: false)
+                case 1:
+                    return Fragment(
+                        text: ["[ab]", "[^a]", "[a-c]", "[^bc]", #"\w"#, #"\W"#].randomElement(using: &rng) ?? "[ab]",
+                        nullable: false)
+                default: return Fragment(text: String("abc".randomElement(using: &rng) ?? "a"), nullable: false)
+            }
+        }
 
-    private static func alternation(_ rng: inout SplitMix64, depth: Int) -> Fragment {
-        let branches = (0 ..< Int.random(in: 1 ... 3, using: &rng)).map { _ in sequence(&rng, depth: depth) }
-        return Fragment(text: branches.map(\.text).joined(separator: "|"), nullable: branches.contains { $0.nullable })
+        private static func piece(_ rng: inout SplitMix64, from pool: [Fragment]) -> Fragment {
+            let base = pool[Int.random(in: 0 ..< pool.count, using: &rng)]
+            guard !base.nullable, Int.random(in: 0 ..< 3, using: &rng) == 0 else { return base }
+            let op = ["*", "+", "?", "*?", "+?", "??", "{2}", "{1,2}", "{0,2}?"].randomElement(using: &rng) ?? "*"
+            return Fragment(
+                text: base.text + op, nullable: op.hasPrefix("*") || op.hasPrefix("?") || op.hasPrefix("{0"))
+        }
+
+        private static func sequence(_ rng: inout SplitMix64, from pool: [Fragment]) -> Fragment {
+            let parts = (0 ..< Int.random(in: 1 ... 4, using: &rng)).map { _ in piece(&rng, from: pool) }
+            return Fragment(text: parts.map(\.text).joined(), nullable: parts.allSatisfy(\.nullable))
+        }
+
+        private static func alternation(_ rng: inout SplitMix64, from pool: [Fragment]) -> Fragment {
+            let branches = (0 ..< Int.random(in: 1 ... 3, using: &rng)).map { _ in sequence(&rng, from: pool) }
+            return Fragment(
+                text: branches.map(\.text).joined(separator: "|"), nullable: branches.contains { $0.nullable })
+        }
     }
 
     private static func haystack(_ rng: inout SplitMix64) -> String {
@@ -58,10 +72,11 @@ struct DifferentialTests {
 
     @Test func `ten thousand generated pattern and haystack pairs agree with ICU`() throws {
         var rng = SplitMix64(state: 0xA3E1_2026)
+        var pools = PatternPools(&rng)
         var compared = 0
         var disagreements: [String] = []
         for _ in 0 ..< 2500 {
-            let source = Self.alternation(&rng, depth: 2).text
+            let source = pools.pattern(&rng)
             let ours = try Pattern(source)
             let icu = try NSRegularExpression(pattern: source)
             for _ in 0 ..< 4 {

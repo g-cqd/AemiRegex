@@ -84,7 +84,7 @@ public struct Pattern: Sendable {
     private static func makePlan(
         _ pattern: String, _ program: Program, limits: Limits, engine: Engine, wholeString: Bool
     ) throws(PatternError) -> DFAPlan? {
-        guard engine == .automatic else { return nil }
+        guard engine == .automatic, DFAPlan.isEligible(program) else { return nil }
         let reverse = try Parser.compile(
             pattern, limits: limits, reverse: true, wholeString: wholeString)
         return DFAPlan(reverse: reverse, forwardClasses: ByteClasses(program), reverseClasses: ByteClasses(reverse))
@@ -169,11 +169,11 @@ public struct Pattern: Sendable {
 
     /// What the forward DFA says about `haystack`, for tests of the cache limit.
     func forwardOutcome(in haystack: [UInt8]) -> LazyDFA.Outcome {
-        haystack.withUnsafeBufferPointer { unsafe forwardOutcome(in: $0) }
+        haystack.withUnsafeBufferPointer { unsafe forwardOutcome(inBuffer: $0) }
     }
 
     /// The forward DFA over a buffer the caller controls, so a test can put bytes just past its end and see whether they are read.
-    func forwardOutcome(in buffer: UnsafeBufferPointer<UInt8>) -> LazyDFA.Outcome {
+    func forwardOutcome(inBuffer buffer: UnsafeBufferPointer<UInt8>) -> LazyDFA.Outcome {
         pool.withScratch { scratch in
             let outcome = unsafe scratch.forward?.searchForward(buffer, from: 0, prefilter: prefilter)
             if outcome == .gaveUp { scratch.forward?.reset() }
