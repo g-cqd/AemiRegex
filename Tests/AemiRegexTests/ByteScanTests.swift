@@ -61,25 +61,6 @@ struct ByteScanTests {
         }
     }
 
-    @Test(arguments: sizes)
-    func `any of several byte pairs is found at the first position where both bytes are adjacent`(size: Int) {
-        let bytes = Self.buffer(size: size, seed: 7)
-        let sets: [[BytePair]] = [
-            [BytePair(0x61, 0x62)], [BytePair(0x61, 0x62), BytePair(0x78, 0x61)],
-            [BytePair(0x7A, 0x7A), BytePair(0x62, 0x78), BytePair(0x78, 0x78)],
-            (0 ..< 16).map { BytePair(0x61 + UInt8($0 % 3), 0x62 + UInt8($0 % 5)) }
-        ]
-        for pairs in sets {
-            for from in 0 ... size {
-                let expected = Self.naive(bytes, from: from) { i in
-                    i + 1 < size && pairs.contains(BytePair(bytes[i], bytes[i + 1]))
-                }
-                let actual = bytes.withUnsafeBufferPointer { ByteScan.firstIndex(ofAnyPair: pairs, in: $0, from: from) }
-                #expect(actual == expected, "\(pairs.count) pairs from \(from) in \(size) bytes")
-            }
-        }
-    }
-
     @Test func `a start offset outside the buffer finds nothing instead of reading out of bounds`() {
         let bytes: [UInt8] = [0x61, 0x61]
         bytes.withUnsafeBufferPointer {
@@ -102,9 +83,6 @@ struct ByteScanTests {
             #expect(ByteScan.firstIndex(ofPair: 0x61, 0x62, in: body, from: 0) == nil, "pair, \(size) bytes")
             #expect(ByteScan.firstIndex(of: 0x62, in: body, from: 0) == nil, "single, \(size) bytes")
             #expect(ByteScan.firstIndex(ofAny: [0x62, 0x63], in: body, from: 0) == nil, "set, \(size) bytes")
-            #expect(
-                ByteScan.firstIndex(ofAnyPair: [BytePair(0x61, 0x62), BytePair(0x62, 0x62)], in: body, from: 0) == nil,
-                "pairs, \(size) bytes")
         }
     }
 }

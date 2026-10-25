@@ -34,8 +34,11 @@ let package = Package(
     ],
     dependencies: packageDependencies,
     targets: [
-        // Zero package dependencies and no Foundation: a pattern is parsed, compiled and matched over UTF-8 bytes.
-        .target(name: "AemiRegex", swiftSettings: kernelSettings),
+        // The multi-literal prefilter kernel: NEON `tbl` and SSSE3 `pshufb` nibble lookups, which Swift SIMD cannot express. A probe
+        // measured 3.3 to 6.1x over the best Swift version at 100 MB on arm64 (docs/research/neon-assembly-2026-10.md).
+        .target(name: "CAemiRegex"),
+        // No package dependencies and no Foundation: a pattern is parsed, compiled and matched over UTF-8 bytes.
+        .target(name: "AemiRegex", dependencies: ["CAemiRegex"], swiftSettings: kernelSettings),
         .testTarget(
             name: "AemiRegexTests",
             dependencies: ["AemiRegex"],

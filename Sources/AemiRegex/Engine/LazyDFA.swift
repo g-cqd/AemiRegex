@@ -195,12 +195,14 @@ struct LazyDFA {
         let shift = strideShift
         return table.withUnsafeBufferPointer { table in
             classes.map.withUnsafeBufferPointer { classMap in
+                assert(classMap.count == 256 && from >= 0 && from <= count)
                 var row = Int(state) << shift
                 var position = from
                 while position < count {
                     let next = unsafe table[row + Int(unsafe classMap[Int(unsafe haystack[position])])]
                     if next & Self.tagMask != 0 { break }
                     row = Int(next)
+                    assert(row >= 0 && row + (1 << shift) <= table.count, "an untagged entry must be a built row")
                     position += 1
                 }
                 return (position, Int32(row >> shift))
@@ -215,12 +217,14 @@ struct LazyDFA {
         let shift = strideShift
         return table.withUnsafeBufferPointer { table in
             classes.map.withUnsafeBufferPointer { classMap in
+                assert(classMap.count == 256 && floor >= 0 && from <= haystack.count)
                 var row = Int(state) << shift
                 var position = from
                 while position > floor {
                     let next = unsafe table[row + Int(unsafe classMap[Int(unsafe haystack[position - 1])])]
                     if next & Self.tagMask != 0 { break }
                     row = Int(next)
+                    assert(row >= 0 && row + (1 << shift) <= table.count, "an untagged entry must be a built row")
                     position -= 1
                 }
                 return (position, Int32(row >> shift))
@@ -327,6 +331,8 @@ struct LazyDFA {
         if let existing = index[key] { return existing }
         let cost = stride * 4 + key.count * 4 + 128
         if !force, bytesUsed + cost > cacheLimit { return nil }
+        // Entries are 30-bit offsets: the table must stay below that, which the cache limit already guarantees; stop if it ever does not.
+        precondition(table.count + stride < Int(Self.offsetMask), "DFA table outgrew the 30-bit entry offsets")
         let id = Int32(keys.count)
         keys.append(key)
         index[key] = id

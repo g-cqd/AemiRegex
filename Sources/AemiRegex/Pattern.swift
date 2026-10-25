@@ -29,6 +29,7 @@ public struct Pattern: Sendable {
 
     let program: Program
     let prefilter: Prefilter
+    private let literals: LiteralSet?
     private let plan: DFAPlan?
     private let pool: ScratchPool
 
@@ -46,6 +47,7 @@ public struct Pattern: Sendable {
         let prefilter = plan == nil ? Prefilter(.none) : Prefilter(analyzing: program)
         self.prefilter = prefilter
         let markStart = prefilter.kind != .none
+        literals = plan == nil || !markStart ? nil : LiteralSet(program)
         let cacheLimit = limits.maxDFACacheBytes
         pool = ScratchPool {
             SearchScratch(
@@ -74,6 +76,12 @@ public struct Pattern: Sendable {
 
     /// The index of the group named `name`, or `nil` when there is none.
     public func groupIndex(named name: String) -> Int? { program.names[name] }
+
+    /// How many searches each engine has answered, for the scratch most recently used.
+    var searchCounts: SearchCounts { pool.withScratch { $0.counts } }
+
+    /// Whether searches use the literal matcher: the pattern is an alternation of short fixed strings.
+    var usesLiteralMatcher: Bool { literals != nil }
 
     /// Whether searches run through the DFA pipeline (every pattern does, unless the Pike VM is forced).
     var usesDFA: Bool { plan != nil }
@@ -121,15 +129,23 @@ public struct Pattern: Sendable {
 
     /// What the forward DFA says about `haystack`, for tests of the cache limit.
     func forwardOutcome(in haystack: [UInt8]) -> LazyDFA.Outcome {
+        haystack.withUnsafeBufferPointer { unsafe forwardOutcome(in: $0) }
+    }
+
+    /// The forward DFA over a buffer the caller controls, so a test can put bytes just past its end and see whether they are read.
+    func forwardOutcome(in buffer: UnsafeBufferPointer<UInt8>) -> LazyDFA.Outcome {
         pool.withScratch { scratch in
-            guard var forward = scratch.forward else { return .noMatch }
-            defer { scratch.forward = forward }
-            scratch.forward = nil
-            let outcome = haystack.withUnsafeBufferPointer {
-                unsafe forward.searchForward($0, from: 0, prefilter: prefilter)
-            }
-            if outcome == .gaveUp { forward.reset() }
-            return outcome
+            let outcome = unsafe scratch.forward?.searchForward(buffer, from: 0, prefilter: prefilter)
+            if outcome == .gaveUp { scratch.forward?.reset() }
+            return outcome ?? .noMatch
+        }
+    }
+
+    /// The reverse DFA over a buffer the caller controls: the start of a match ending at `end`, scanning down to `floor` only.
+    func reverseStart(in buffer: UnsafeBufferPointer<UInt8>, end: Int, floor: Int) -> Int? {
+        pool.withScratch { scratch in
+            var gaveUp = false
+            return unsafe scratch.reverse?.searchReverse(buffer, end: end, floor: floor, gaveUp: &gaveUp)
         }
     }
 
@@ -144,7 +160,12 @@ public struct Pattern: Sendable {
     private func search(_ scratch: inout SearchScratch, _ haystack: [UInt8], from start: Int, allowDFA: inout Bool)
         -> Match?
     {
+        if let literals {
+            scratch.counts.literal += 1
+            return literalSearch(literals, haystack, from: start)
+        }
         if allowDFA, scratch.forward != nil {
+            scratch.counts.dfa += 1
             var from = start
             while from <= haystack.count {
                 let outcome = haystack.withUnsafeBufferPointer {
@@ -176,9 +197,17 @@ public struct Pattern: Sendable {
         return pike(&scratch, haystack, from: start, anchored: false, limit: nil)
     }
 
+    /// The leftmost match of a pure literal alternation: the prefilter offers candidates and the alternatives are checked at each.
+    private func literalSearch(_ literals: LiteralSet, _ haystack: [UInt8], from start: Int) -> Match? {
+        haystack.withUnsafeBufferPointer { buffer in
+            unsafe literals.firstMatch(in: buffer, from: start, prefilter: prefilter).map { Match(range: $0) }
+        }
+    }
+
     private func pike(_ scratch: inout SearchScratch, _ haystack: [UInt8], from start: Int, anchored: Bool, limit: Int?)
         -> Match?
     {
+        scratch.counts.pike += 1
         guard scratch.pike.search(haystack, from: start, anchored: anchored, limit: limit) else { return nil }
         let slots = scratch.pike.best
         let captures = (1 ..< slots.count / 2)
