@@ -36,7 +36,8 @@ struct BTParser: PatternCursor {
         self.limits = limits
         flags = BTFlags(
             ignoreCase: options.contains(.ignoreCase), multiLine: options.contains(.multiLine),
-            dotAll: options.contains(.dotAll), extended: options.contains(.extended))
+            dotAll: options.contains(.dotAll), extended: options.contains(.extended),
+            unicodeSets: options.contains(.unicodeSets))
     }
 
     static func parse(
@@ -44,8 +45,9 @@ struct BTParser: PatternCursor {
         limits: Pattern.Limits
     ) throws(PatternError) -> BTSyntaxTree {
         guard pattern.utf8.count <= limits.maxPatternBytes else { throw .limit(.patternLength) }
-        // @dl:accept -- the entry point of one dialect's parser; the shared decoding is PatternCursor
         guard dialect == .pcre2 || !options.contains(.extended) else { throw .syntax(.invalidFlag, offset: 0) }
+        // @dl:accept -- the entry point of one dialect's parser; the shared decoding is PatternCursor
+        guard dialect == .ecmaScript || !options.contains(.unicodeSets) else { throw .syntax(.invalidFlag, offset: 0) }
         var parser = BTParser(pattern, dialect: dialect, options: options, limits: limits)
         return try parser.run()
     }
@@ -102,7 +104,7 @@ struct BTParser: PatternCursor {
                 if isECMAScript { throw .syntax(.invalidCharacter, offset: offset(position)) }
                 try addLiteral(c)
                 position += 1
-            case 0x5B: try parseClass()
+            case 0x5B: try (flags.unicodeSets ? parseSetClass() : parseClass())
             case 0x2E:
                 let lines = BTSets.lineTerminators(dialect)
                 try addSet(flags.dotAll ? ScalarSet(normalizing: [0 ... ScalarSet.maxScalar]) : lines.negated())

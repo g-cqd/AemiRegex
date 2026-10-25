@@ -37,6 +37,7 @@ const atoms = [
 ];
 atoms.push(atom('\\p{Alphabetic}'), atom('\\P{Lowercase}'), atom('\\p{Emoji}'));
 if (pcre) atoms.push(atom('\\p{Greek}'), atom('\\p{Xan}'), atom('\\p{Common}'));
+if (!pcre) atoms.push(atom('[\\w--[a-c]]'), atom('[[a-c]&&[b-d]]'), atom('[\\q{ab|c}]'), atom('[\\p{L}--\\p{Lu}]'), atom('[^[a-c]x]'));
 if (!pcre) atoms.push(atom('\\p{scx=Latin}'), atom('\\p{Script=Greek}'), atom('\\p{ID_Start}'));
 if (pcre) atoms.push({ text: '\\A', atom: false, len: 0 }, { text: '\\z', atom: false, len: 0 }, { text: '\\Z', atom: false, len: 0 });
 if (pcre) atoms.push(atom('\\h'), atom('\\R', null), atom('\\N'), atom('@G@', null));
@@ -100,11 +101,12 @@ function buildSubject() {
 const cases = [];
 if (curated) {
   const list = JSON.parse(require('node:fs').readFileSync(process.argv[4], 'utf8'));
-  for (const [p, subjects, f] of list) for (const s of subjects) cases.push({ p, s, f });
+  // `v` (set notation) is an ECMAScript flag; PCRE2 has nothing to compare it with.
+  for (const [p, subjects, f] of list) for (const s of subjects) if (!pcre || !f.includes('v')) cases.push({ p, s, f });
 }
 while (cases.length < total) {
   const p = buildPattern();
-  const f = (chance(0.2) ? pick(['i', 'm', 's', 'im', 'is']) : '') + (chance(0.2) ? 'g' : '');
+  const f = (chance(0.2) ? pick(pcre ? ['i', 'm', 's', 'im', 'is'] : ['i', 'm', 's', 'im', 'is', 'v', 'iv', 'v', 'mv']) : '') + (chance(0.2) ? 'g' : '');
   const subjects = 1 + Math.floor(rand() * 3);
   for (let i = 0; i < subjects && cases.length < total; i++) cases.push({ p, s: buildSubject(), f });
 }
@@ -129,13 +131,16 @@ function midPair(text, index) { // whether `index` is between the two halves of 
   return index > 0 && code >= 0xDC00 && code <= 0xDFFF && text.charCodeAt(index - 1) >= 0xD800 && text.charCodeAt(index - 1) <= 0xDBFF;
 }
 
+// Unicode mode is the `u` flag, or `v` when the case asks for set notation (the two cannot be combined).
+function flagsFor(c) { return 'd' + (c.f.includes('v') ? '' : 'u') + c.f; }
+
 function runEcma(c) {
   let re;
-  try { re = new RegExp(c.p, 'du' + c.f.replace('g', '')); } catch { return 'error'; }
+  try { re = new RegExp(c.p, flagsFor(c).replace('g', '')); } catch { return 'error'; }
   const off = utf8Offsets(c.s);
   const convert = (m) => m.indices.map((pair) => (pair ? [off[pair[0]], off[pair[1]]] : null));
   if (c.f.includes('g')) {
-    const all = [...c.s.matchAll(new RegExp(c.p, 'du' + c.f))];
+    const all = [...c.s.matchAll(new RegExp(c.p, flagsFor(c)))];
     // V8 can report a match that starts between the two halves of a surrogate pair; a UTF-8 text has no such position.
     if (all.some((m) => midPair(c.s, m.index))) return 'limit';
     return all.map(convert);

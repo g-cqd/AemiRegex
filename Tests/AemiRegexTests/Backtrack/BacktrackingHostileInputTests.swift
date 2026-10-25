@@ -107,4 +107,24 @@ struct BacktrackingHostileInputTests {
             #expect(throws: PatternError.self) { try BacktrackingPattern(pattern, dialect: .ecmaScript) }
         }
     }
+
+    @Test func `classes nested in v mode stop at the nesting limit instead of overflowing the stack`() {
+        let depth = 20_000
+        let pattern = String(repeating: "[", count: depth) + "a" + String(repeating: "]", count: depth)
+        #expect(throws: PatternError.limit(.nestingDepth)) {
+            try BacktrackingPattern(pattern, dialect: .ecmaScript, options: .unicodeSets)
+        }
+    }
+
+    @Test func `the v flag is ECMAScript only, and properties of strings are not supported`() {
+        #expect(throws: PatternError.syntax(.invalidFlag, offset: 0)) {
+            try BacktrackingPattern("[a]", dialect: .pcre2, options: .unicodeSets)
+        }
+        #expect(throws: PatternError.self) {
+            try BacktrackingPattern(#"[\p{RGI_Emoji}]"#, dialect: .ecmaScript, options: .unicodeSets)
+        }
+        #expect(throws: PatternError.self) {
+            try BacktrackingPattern("[a--b", dialect: .ecmaScript, options: .unicodeSets)
+        }
+    }
 }

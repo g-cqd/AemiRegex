@@ -44,6 +44,7 @@ struct BacktrackCase: Decodable {
         if f.contains("m") { options.insert(.multiLine) }
         if f.contains("s") { options.insert(.dotAll) }
         if f.contains("x") { options.insert(.extended) }
+        if f.contains("v") { options.insert(.unicodeSets) }
         return options
     }
 }
