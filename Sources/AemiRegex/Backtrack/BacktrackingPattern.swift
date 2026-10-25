@@ -43,10 +43,20 @@ public struct BacktrackingPattern: Sendable {
         _ pattern: String, dialect: Dialect, options: Options = [], limits: Pattern.Limits = .default,
         budget: Budget = .default
     ) throws(PatternError) {
+        self.pattern = pattern
+        self.dialect = dialect
+        self.options = options
         let tree = try BTParser.parse(pattern, dialect: dialect, options: options, limits: limits)
         program = try BTCompiler.compile(tree, dialect: dialect, limits: limits)
         self.budget = budget
     }
+
+    /// The pattern string this expression was compiled from.
+    public let pattern: String
+    /// The syntax dialect this pattern follows.
+    public let dialect: Dialect
+    /// The compilation flags that apply to this pattern.
+    public let options: Options
 
     let program: BTProgram
     let budget: Budget

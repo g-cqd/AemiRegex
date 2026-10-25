@@ -3,6 +3,11 @@
 /// The syntax is RE2's: no backreferences and no lookaround, which is what lets every search run in time proportional to
 /// the pattern times the input. A pattern is a value: compile it once, then match from any task.
 public struct Pattern: Sendable {
+    /// The pattern string this expression was compiled from.
+    public let pattern: String
+    /// The syntax dialect this pattern follows.
+    public let syntax: Syntax
+
     let program: Program
     let prefilter: Prefilter
     let literals: LiteralSet?
@@ -20,12 +25,20 @@ public struct Pattern: Sendable {
     }
 
     init(
-        _ pattern: String, limits: Limits = .default, engine: Engine, wholeString: Bool = false
+        _ pattern: String,
+        syntax: Syntax = .re2,
+        source: String? = nil,
+        limits: Limits = .default,
+        engine: Engine = .automatic,
+        wholeString: Bool = false
     ) throws(PatternError) {
+        self.pattern = pattern
+        self.syntax = syntax
+        let compiledText = source ?? pattern
         let program = try Parser.compile(
-            pattern, limits: limits, wholeString: wholeString)
+            compiledText, limits: limits, wholeString: wholeString)
         let plan = try Self.makePlan(
-            pattern, program, limits: limits, engine: engine, wholeString: wholeString)
+            compiledText, program, limits: limits, engine: engine, wholeString: wholeString)
         self.program = program
         self.plan = plan
         endAnchored = plan != nil && DFAPlan.isEndAnchored(program)
@@ -79,7 +92,9 @@ public struct Pattern: Sendable {
             case .iRegexpWithAnchors: source = try IRegexp.translate(pattern, limits: limits, anchors: true)
         }
         let whole = (matching ?? (syntax == .re2 ? .search : .wholeString)) == .wholeString
-        try self.init(source, limits: limits, engine: .automatic, wholeString: whole)
+        try self.init(
+            pattern, syntax: syntax, source: source, limits: limits, engine: .automatic,
+            wholeString: whole)
     }
 
     /// The number of capture groups, not counting the whole match.
