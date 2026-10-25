@@ -9,11 +9,18 @@
 /// only fail on a limit (program size).
 enum IRegexp {
     /// The RE2 source for `pattern`.
+    /// - Parameters:
+    ///   - pattern: The I-Regexp text.
+    ///   - limits: What the pattern may cost.
+    ///   - anchors: Whether `^` and `$` outside a class are anchors (``Pattern/Syntax/iRegexpWithAnchors``) and not ordinary characters.
+    /// - Returns: The equivalent RE2 source.
     /// - Throws: ``PatternError/syntax(_:offset:)`` with a byte offset in `pattern`, or a limit.
     /// - Complexity: O(pattern length); stack use is bounded by the nesting limit.
-    static func translate(_ pattern: String, limits: Pattern.Limits) throws(PatternError) -> String {
+    static func translate(_ pattern: String, limits: Pattern.Limits, anchors: Bool = false) throws(PatternError)
+        -> String
+    {
         guard pattern.utf8.count <= limits.maxPatternBytes else { throw .limit(.patternLength) }
-        var translator = Translator(pattern, limits: limits)
+        var translator = Translator(pattern, limits: limits, anchors: anchors)
         try translator.run()
         return translator.output
     }

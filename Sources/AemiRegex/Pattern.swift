@@ -76,8 +76,9 @@ public struct Pattern: Sendable {
         switch syntax {
             case .re2: source = pattern
             case .iRegexp: source = try IRegexp.translate(pattern, limits: limits)
+            case .iRegexpWithAnchors: source = try IRegexp.translate(pattern, limits: limits, anchors: true)
         }
-        let whole = (matching ?? (syntax == .iRegexp ? .wholeString : .search)) == .wholeString
+        let whole = (matching ?? (syntax == .re2 ? .search : .wholeString)) == .wholeString
         try self.init(source, limits: limits, engine: .automatic, wholeString: whole)
     }
 
