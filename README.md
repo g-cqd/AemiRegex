@@ -54,8 +54,8 @@ try evil.firstMatch(in: String(repeating: "a", count: 60))       // throws Backt
 ```
 
 It agrees with `node` (ECMAScript) and `libpcre2` on about 24,000 generated and 1,700 hand-picked pattern/subject pairs. It covers
-subroutine calls and recursion, conditionals, binary Unicode properties and `Script_Extensions`. Not yet supported: other backtracking verbs,
-`\G`, `\X`, callouts, the `v` flag and non-`u` ECMAScript. Those throw `.unsupported` or are refused.
+subroutine calls and recursion, conditionals, binary Unicode properties and `Script_Extensions`. The `v` flag works (`Options.unicodeSets`) except for properties of strings. Not yet supported: other backtracking verbs,
+`\G`, `\X`, callouts and non-`u` ECMAScript. Those throw `.unsupported` or are refused.
 
 ## Develop
 

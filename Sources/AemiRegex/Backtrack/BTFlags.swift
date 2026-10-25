@@ -8,4 +8,6 @@ struct BTFlags: Equatable, Sendable {
     var extended = false
     /// PCRE2's `n`: plain parentheses do not capture.
     var noAutoCapture = false
+    /// ECMAScript's `v`: set notation in classes. It is set once for the whole pattern and no inline flag changes it.
+    var unicodeSets = false
 }

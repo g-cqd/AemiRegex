@@ -22,8 +22,14 @@ extension BTParser {
             name.removeFirst()
         }
         if isECMAScript {
+            // Properties of strings are sequences of scalars; this engine has no data for them.
+            if flags.unicodeSets, Self.stringProperties.contains(name) { throw .syntax(.unsupported, offset: at) }
             guard let set = ecmaProperty(name) else { throw .syntax(.unknownClassName, offset: at) }
-            // ECMAScript complements first and folds after, so `\P{Lowercase}` under `i` still matches `A`.
+            // With `u`, ECMAScript complements first and folds after, so `\P{Lowercase}` under `i` still matches `A`; with `v`, the other way.
+            if flags.unicodeSets {
+                let folded = flags.ignoreCase ? set.folded() : set
+                return .set(invert ? folded.negated() : folded)
+            }
             let base = invert ? set.negated() : set
             return .set(flags.ignoreCase ? base.folded() : base)
         }
@@ -34,6 +40,11 @@ extension BTParser {
         let result = invert ? base.negated() : base
         return widened ? .set(result) : .fixedSet(result)
     }
+
+    private static let stringProperties: Set<String> = [
+        "Basic_Emoji", "Emoji_Keycap_Sequence", "RGI_Emoji", "RGI_Emoji_Flag_Sequence", "RGI_Emoji_Modifier_Sequence",
+        "RGI_Emoji_Tag_Sequence", "RGI_Emoji_ZWJ_Sequence"
+    ]
 
     /// An ECMAScript property: `General_Category=Lu`, `Script=Greek`, `Script_Extensions=Greek` (and `gc`, `sc`, `scx`), or a bare general
     /// category or binary property. Names are exact.

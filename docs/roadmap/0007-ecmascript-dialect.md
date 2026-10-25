@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 blocked-by: []
 date: 2026-10-25
 ---
@@ -29,5 +29,6 @@ Built on `BacktrackingPattern` (ADR-0011, ADR-0012): flags `i m s` as options, `
 excluding the four line terminators, `\uHHHH` with surrogate pairs, `\u{…}`, `\cX`, `\0`, named groups (also repeated in different alternatives, ES2025)
 and `\k<…>`, `\p{…}` over categories, scripts, **Script_Extensions and the 53 binary properties** (exact names and aliases), modifiers `(?i:…)`, captures
 reset on each iteration, empty iterations rejected, lookbehind read backwards. Agrees with `node` on the generated and curated corpora (about 1,700
-curated patterns, 12,000 generated cases, and 60,000 more in a soak). **Open:** the `v` flag (set notation, `\q{…}`, properties of strings) and non-`u` mode
-(out of scope: ADR-0011). Status stays `in-progress` until the `v` flag is built or refused by design.
+curated patterns, 12,000 generated cases, and 60,000 more in a soak). The `v` flag is built (`Options.unicodeSets`): nested classes, `--`, `&&`, `\q{…}` strings (longest first), the stricter escaping rules and the `\P` order.
+**Open:** properties of strings (`\p{RGI_Emoji}` and six more, which need sequence data and throw `.unsupported`) and non-`u` mode (out of scope: ADR-0011).
+Status is `done` for what the oracle can check with the data held.
