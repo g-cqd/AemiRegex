@@ -2,7 +2,7 @@
 # Runs AemiRegex, NSRegularExpression, Swift Regex, Go regexp, the Rust regex crate and PCRE2 (JIT) on one frozen corpus and one
 # workload file, and prints a table of median milliseconds. Each engine counts matches per file over 9 rounds (3 for Swift Regex).
 #
-#   Scripts/bench-compare.sh [corpus-dir]        default: a snapshot of ../../ask/Sources taken now
+#   Scripts/bench-compare.sh [corpus-dir]        default: a snapshot of this repository's Sources taken now
 #
 # The corpus is copied to a temporary directory first: a live repository changes between runs. The harnesses are built into the
 # temporary directory too. Needs go, cargo (offline, regex 1.12.3 in the local registry) and pcre2 (pcre2-config).
@@ -11,7 +11,7 @@ set -eu
 cd "$(dirname "$0")/.."
 WORK="${TMPDIR:-/tmp}/aemiregex-bench"
 rm -rf "$WORK" && mkdir -p "$WORK/corpus"
-SRC="${1:-../../ask/Sources}"
+SRC="${1:-Sources}"
 (cd "$SRC" && find . -name '*.swift' | sort | while read -r f; do mkdir -p "$WORK/corpus/$(dirname "$f")" && cp "$f" "$WORK/corpus/$f"; done)
 printf 'corpus: %s files, %s bytes (snapshot of %s)\n' "$(find "$WORK/corpus" -name '*.swift' | wc -l | tr -d ' ')" \
     "$(find "$WORK/corpus" -name '*.swift' -exec cat {} + | wc -c | tr -d ' ')" "$SRC"
