@@ -24,6 +24,7 @@ public struct Pattern: Sendable {
             pattern, program, limits: limits, engine: engine, wholeString: wholeString)
         self.program = program
         self.plan = plan
+        endAnchored = plan != nil && DFAPlan.isEndAnchored(program)
         let prefilter = plan == nil ? Prefilter(.none) : Prefilter(analyzing: program)
         self.prefilter = prefilter
         let markStart = prefilter.kind != .none
@@ -81,6 +82,9 @@ public struct Pattern: Sendable {
 
     /// How many searches each engine has answered, for the scratch most recently used.
     var searchCounts: SearchCounts { pool.withScratch { $0.counts } }
+
+    /// Whether every match must end at the end of the text, so a search can run backwards from the end.
+    let endAnchored: Bool
 
     /// Whether searches use the literal matcher: the pattern is an alternation of short fixed strings.
     var usesLiteralMatcher: Bool { literals != nil }
@@ -165,6 +169,21 @@ public struct Pattern: Sendable {
         if let literals {
             scratch.counts.literal += 1
             return literalSearch(literals, haystack, from: start)
+        }
+        if endAnchored, allowDFA, scratch.reverse != nil {
+            scratch.counts.endAnchored += 1
+            var gaveUp = false
+            let end = haystack.count
+            let begin = haystack.withUnsafeBufferPointer {
+                unsafe scratch.reverse?.searchReverse($0, end: end, floor: start, gaveUp: &gaveUp)
+            }
+            guard gaveUp else {
+                guard let matchStart = begin ?? nil else { return nil }
+                if program.captureCount == 0 { return Match(range: matchStart ..< end) }
+                return pike(&scratch, haystack, from: matchStart, anchored: true, limit: end)
+            }
+            scratch.reverse?.reset()
+            allowDFA = false
         }
         if allowDFA, scratch.forward != nil {
             scratch.counts.dfa += 1

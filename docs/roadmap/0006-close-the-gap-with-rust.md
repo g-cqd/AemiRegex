@@ -1,5 +1,5 @@
 ---
-status: not-started
+status: in-progress
 blocked-by: []
 date: 2026-10-25
 ---
@@ -12,8 +12,9 @@ only if its row moves.
 
 ## The queue, by measured gap
 
-1. **End-anchored patterns.** `[ \t]*$`: Rust 0.01 ms, 1.77 here (177x). Probably a search from the end; confirm by reading Rust's
-   documentation and then by a probe.
+1. **End-anchored patterns: done.** `[ \t]*$` went from 1.77 ms to 0.06 ms (about 30x; Rust 0.01 ms). A pattern whose every match must
+   end at `\z` is searched backwards from the end by the reverse DFA, which reads only what the match covers. Whether Rust does exactly this
+   was a hypothesis and was not checked; what is measured is that the row moved. What remains of the 0.06 ms is per-call overhead (item 4).
 2. **An inner literal for captures.** `(\w+)\s*:\s*(\w+)\s*\{` is 4x behind. Search for a required literal, then run the reverse DFA.
 3. **Dense empty matches.** `\w*` and `\b`: about 60 ns per match against about 35. A forward-only path when the start is known.
 4. **Per-call overhead on small haystacks.** Literal 0.14 ms against 0.05: a non-allocating iteration API, a lock-free scratch fast path.

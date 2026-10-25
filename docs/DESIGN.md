@@ -38,6 +38,9 @@ wrote, because the translator makes every check it can before the RE2 parser see
 
 ## How a search runs
 
+0. If every match must end at the end of the text (every path to `match` crosses `\z` or a non-multiline `$`; the rule is conservative), the
+   search skips the forward scan: the reverse DFA runs from the end of the text and its leftmost start is the match start, so a long haystack
+   costs only the length of the match.
 1. The prefilter jumps to the next position a match could start, while the forward DFA is in its start state.
 2. The forward DFA reads bytes to the end of the leftmost-first match. State = the ordered thread list of the Pike VM, plus: a match was
    seen (stops new threads), a match ended just before the last byte, and the kind of the last byte. Assertions stay pending in the list
