@@ -37,8 +37,8 @@ enum ByteScan {
             i += 16
         }
         while i + 1 < count {
-            // @dl:accept -- the single-pair scan is a literal prefilter's hot path, called per candidate; sharing code with
-            // the multi-pair scan would allocate needle arrays on every call (measured: a third of the literal row)
+            // Not shared with the multi-pair scan: that would allocate needle arrays per call (a third of the literal row).
+            // @dl:accept -- hot path of the literal prefilter, called per candidate
             if unsafe base[i] == first, unsafe base[i + 1] == second { return i }
             i += 1
         }
