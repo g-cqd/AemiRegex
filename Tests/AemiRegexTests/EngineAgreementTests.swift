@@ -117,4 +117,31 @@ struct EngineAgreementTests {
         }
         #expect(results.allSatisfy { $0 == expected })
     }
+
+    /// The unchecked DFA loops must stop at the end of the buffer they were given. The bytes after it are made to complete a match, so
+    /// a loop that reads one byte too far reports a match that is not there. Only the poison can show it: clean memory gives the same
+    /// answer.
+    @Test(arguments: [0, 1, 2, 15, 16, 17, 31, 32, 33, 63, 64, 65, 255])
+    func `the forward DFA never reads past the end of its buffer`(size: Int) throws {
+        let pattern = try Pattern("a+b")
+        #expect(pattern.usesDFA)
+        var storage = [UInt8](repeating: 0x61, count: size)
+        storage += [UInt8](repeating: 0x62, count: 70)
+        storage.withUnsafeBufferPointer { whole in
+            let body = UnsafeBufferPointer(rebasing: whole[0 ..< size])
+            #expect(pattern.forwardOutcome(in: body) == .noMatch, "\(size) bytes of a, then b past the end")
+        }
+    }
+
+    /// The same for the reverse scan, whose lower bound is `floor`: the bytes before it are poison that would extend the match.
+    @Test(arguments: [0, 1, 2, 15, 16, 17, 31, 32, 33, 63, 64, 65, 255])
+    func `the reverse DFA never reads below its floor`(size: Int) throws {
+        let pattern = try Pattern("ba+")
+        var storage = [UInt8](repeating: 0x62, count: 70)
+        storage += [UInt8](repeating: 0x61, count: size)
+        storage.withUnsafeBufferPointer { whole in
+            // The match "b a…a" would start at 69 (the last poison byte) if the scan went below the floor of 70.
+            #expect(pattern.reverseStart(in: whole, end: 70 + size, floor: 70) == nil, "\(size) a's above the floor")
+        }
+    }
 }

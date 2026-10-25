@@ -16,20 +16,20 @@ struct Prefilter: Sendable {
 
     let kind: Kind
     private let needles: [SIMD16<UInt8>]
-    private let secondNeedles: [SIMD16<UInt8>]
+    private let teddy: Teddy?
 
     init(_ kind: Kind) {
         self.kind = kind
         switch kind {
             case .set(let bytes):
                 needles = bytes.map { SIMD16(repeating: $0) }
-                secondNeedles = []
+                teddy = nil
             case .pairs(let pairs):
-                needles = pairs.map { SIMD16(repeating: $0.first) }
-                secondNeedles = pairs.map { SIMD16(repeating: $0.second) }
+                needles = []
+                teddy = Teddy(pairs)
             default:
                 needles = []
-                secondNeedles = []
+                teddy = nil
         }
     }
 
@@ -39,11 +39,48 @@ struct Prefilter: Sendable {
             case .none: from <= bytes.count ? from : nil
             case .byte(let byte): unsafe ByteScan.firstIndex(of: byte, in: bytes, from: from)
             case .pair(let first, let second): unsafe ByteScan.firstIndex(ofPair: first, second, in: bytes, from: from)
-            case .pairs(let pairs):
-                unsafe ByteScan.firstIndex(
-                    ofAnyPairNeedles: needles, secondNeedles, pairs: pairs, in: bytes, from: from)
+            case .pairs: unsafe teddy?.firstCandidate(in: bytes, from: from)
             case .set(let set): unsafe ByteScan.firstIndex(ofAnyNeedles: needles, bytes: set, in: bytes, from: from)
         }
+    }
+
+    /// Offers candidate positions to `verify` in ascending order and returns the first non-`nil` result, or `nil` when none verifies.
+    ///
+    /// For a pair set the Teddy kernel reports every candidate of a window of bytes in one call, so a dense candidate stream does not
+    /// pay a call and a table setup for each one. The window starts small, because a search usually stops at the first match and
+    /// every candidate found past it is wasted work, and doubles while candidates keep failing, up to a few kilobytes. The batch
+    /// buffer (256 positions) is on the stack.
+    func firstVerified<Result>(in bytes: UnsafeBufferPointer<UInt8>, from: Int, _ verify: (Int) -> Result?) -> Result? {
+        if let teddy, let base = bytes.baseAddress {
+            return withUnsafeTemporaryAllocation(of: Int.self, capacity: 256) { batch -> Result? in
+                var position = from
+                var window = 256
+                while position >= 0, position < bytes.count {
+                    // Positions `position ..< position + window` are the ones this call may report; a position needs the byte after
+                    // it, so the kernel is given one byte more than the window.
+                    let end = min(bytes.count, position + window + 1)
+                    let slice = unsafe UnsafeBufferPointer(start: base, count: end)
+                    let (count, resume) = unsafe teddy.candidates(in: slice, from: position, into: batch)
+                    for index in 0 ..< count {
+                        if let found = verify(unsafe batch[index]) { return found }
+                    }
+                    if resume >= end {
+                        if end == bytes.count { return nil }
+                        position = end - 1
+                    } else {
+                        position = resume
+                    }
+                    window = min(window * 2, 4096)
+                }
+                return nil
+            }
+        }
+        var position = from
+        while let candidate = unsafe next(in: bytes, from: position) {
+            if let found = verify(candidate) { return found }
+            position = candidate + 1
+        }
+        return nil
     }
 
     /// The most selective scan for `program`: a literal prefix, else the set of possible first bytes, else none.

@@ -2,10 +2,18 @@ import Synchronization
 
 /// Everything one search mutates: the DFA caches and the Pike VM buffers. A pattern keeps a few of these in a pool, so concurrent
 /// searches never share one and repeated searches reuse the states already built.
+/// How many searches each engine answered, kept so a test can tell which engine ran (an answer alone cannot: the engines agree).
+struct SearchCounts: Equatable, Sendable {
+    var literal = 0
+    var dfa = 0
+    var pike = 0
+}
+
 struct SearchScratch {
     var forward: LazyDFA?
     var reverse: LazyDFA?
     var pike: PikeVM
+    var counts = SearchCounts()
 }
 
 /// A scratch value in a reference, so the pool moves a pointer instead of copying about thirty arrays on every search.
