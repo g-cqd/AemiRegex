@@ -27,7 +27,7 @@ and `$` are ordinary characters, `.` excludes `\n` and `\r`, and nothing outside
 default (`Pattern.Matching`), with offsets in the text as written and every semantic check (reversed range, repeat count order and limit,
 category name) made before translation. 8,000 patterns agree with the recogniser written from the ABNF; 198 patterns x 32 haystacks agree
 with Go on the RFC's own mapping, both whole-string and search; RFC section 5.1 Table 1 is a test; six mutations each turn the suite red.
-Categories come from the standard library (ADR-0008). RE2 syntax gained `\p` and `\P` over general categories, checked against Go.
+Categories came from the standard library (ADR-0008, superseded by ADR-0009). RE2 syntax gained `\p` and `\P` over general categories, checked against Go.
 
 ## Still open, and not claimed
 
@@ -35,4 +35,5 @@ Categories come from the standard library (ADR-0008). RE2 syntax gained `\p` and
   dependency on AemiJSON or a copy of its cases.
 - **The RFC's mapping does not escape `^` and `$`**, which its grammar makes ordinary characters; AemiRegex follows the grammar and XSD.
   Whether an erratum exists was not checked.
-- **`\p{C}` and `\p{Cn}` are tested by unit tests, not by Go**, which has no unassigned category.
+- **`\p{C}` and `\p{Cn}` were first tested by unit tests only**, because the Go of the time lacked an unassigned category. Go 1.27 has `Cn`
+  and its `C` includes unassigned code points; both are now in the Go-oracle corpus (ADR-0009).

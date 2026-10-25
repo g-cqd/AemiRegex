@@ -47,8 +47,10 @@ extension Parser {
             case 0x72: return .scalar(0x0D)
             case 0x76: return .scalar(0x0B)
             case 0x64, 0x44, 0x73, 0x53, 0x77, 0x57:
-                guard let set = ClassCatalog.perl(c) else { throw .syntax(.invalidEscape, offset: start) }
-                return .set(set)
+                guard let (positive, negated) = ClassCatalog.perl(c) else {
+                    throw .syntax(.invalidEscape, offset: start)
+                }
+                return .set(foldedThenNegated(positive, negated: negated))
             case 0x62, 0x42, 0x41, 0x7A:
                 guard !inClass else { throw .syntax(.invalidEscape, offset: start) }
                 switch c {
@@ -79,7 +81,7 @@ extension Parser {
                 position += 1
             }
             while let c = peek(), c != 0x7D {
-                guard name.unicodeScalars.count < 8, let scalar = Unicode.Scalar(c) else {
+                guard name.unicodeScalars.count < 64, let scalar = Unicode.Scalar(c) else {
                     throw .syntax(.unknownClassName, offset: start)
                 }
                 name.unicodeScalars.append(scalar)
@@ -92,10 +94,15 @@ extension Parser {
             name.unicodeScalars.append(scalar)
             position += 1
         }
-        guard let set = UnicodeCategories.set(named: name, xsd: xsdCategories) else {
-            throw .syntax(.unknownClassName, offset: start)
-        }
-        return negated ? set.negated() : set
+        guard let set = UnicodeProperties.set(named: name) else { throw .syntax(.unknownClassName, offset: start) }
+        return foldedThenNegated(set, negated: negated)
+    }
+
+    /// A named class under the current flags. With `(?i)` the class is case-folded first and negated after, as Go does, so that
+    /// `(?i)\W` leaves out `ſ` and the Kelvin sign, which fold to word characters.
+    mutating func foldedThenNegated(_ positive: ScalarSet, negated: Bool) -> ScalarSet {
+        let base = flags.ignoreCase ? positive.folded() : positive
+        return negated ? base.negated() : base
     }
 
     private static func isAlphanumeric(_ c: UInt32) -> Bool {

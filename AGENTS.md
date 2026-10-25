@@ -16,6 +16,8 @@ Scripts/teddy-check.sh                                   # the C kernel: SIMD vs
 Scripts/bench-compare.sh                                 # AemiRegex vs ICU, Swift Regex, Go, Rust regex, PCRE2 JIT (frozen corpus)
 go run Scripts/golden/gen.go > Tests/AemiRegexTests/Resources/re2-golden.jsonl            # regenerate the Go oracle fixtures
 go run Scripts/golden/generated/gen.go > Tests/AemiRegexTests/Resources/re2-generated.jsonl
+go run Scripts/golden/iregexp/gen.go Tests/AemiRegexTests/Resources                      # the I-Regexp fixtures (grammar and golden)
+go run Scripts/unicode/gen.go > Sources/AemiRegex/Syntax/GeneratedUnicodeTables.swift    # Unicode tables; the output is already formatted
 git config core.hooksPath .githooks                      # once per clone: pre-commit lint, pre-push release run
 ```
 
@@ -57,6 +59,6 @@ Atomic and buildable. The message states why. Never mix a refactor and a behavio
 ## Current state
 
 Phases and their order are in `docs/roadmap/`; read an entry's `status:` and `blocked-by:` before starting it. The order the owner set is
-I-Regexp (0004, done), then Unicode (0005), then the Rust gap (0006); ECMAScript, PCRE2 and the budgeted backtracking engine follow Unicode.
-Built: RE2 syntax, I-Regexp with whole-string matching, `\p` over general categories (interim source, ADR-0008). Not built: scripts and case
-folding, a `String` API, ECMAScript, PCRE2, the backtracking engine, a first CI run (the workflow was written locally and never executed).
+I-Regexp (0004, done), Unicode (0005, done), then the Rust gap (0006); ECMAScript, PCRE2 and the budgeted backtracking engine follow Unicode.
+Built: RE2 syntax, I-Regexp with whole-string matching, `\p` over categories and scripts, and Unicode simple case folding, all from generated
+tables (ADR-0009; Go's Unicode 17.0.0). Not built: binary properties, a `String` API, ECMAScript, PCRE2, the backtracking engine, a first CI run (the workflow was written locally and never executed).

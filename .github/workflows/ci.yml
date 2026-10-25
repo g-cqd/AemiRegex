@@ -57,3 +57,8 @@ jobs:
           diff -u Tests/AemiRegexTests/Resources/re2-golden.jsonl /tmp/re2-golden.jsonl
           go run Scripts/golden/generated/gen.go > /tmp/re2-generated.jsonl
           diff -u Tests/AemiRegexTests/Resources/re2-generated.jsonl /tmp/re2-generated.jsonl
+          mkdir -p /tmp/iregexp && go run Scripts/golden/iregexp/gen.go /tmp/iregexp
+          diff -u Tests/AemiRegexTests/Resources/iregexp-grammar.jsonl /tmp/iregexp/iregexp-grammar.jsonl
+          diff -u Tests/AemiRegexTests/Resources/iregexp-golden.jsonl /tmp/iregexp/iregexp-golden.jsonl
+          go run Scripts/unicode/gen.go > /tmp/GeneratedUnicodeTables.swift
+          diff -u Sources/AemiRegex/Syntax/GeneratedUnicodeTables.swift /tmp/GeneratedUnicodeTables.swift

@@ -195,7 +195,7 @@ enum IRegexp {
                 name.unicodeScalars.append(Unicode.Scalar(scalars[end]) ?? "?")
                 end += 1
             }
-            guard end < scalars.count, scalars[end] == 0x7D, UnicodeCategories.isXSDName(name) else {
+            guard end < scalars.count, scalars[end] == 0x7D, UnicodeProperties.isGeneralCategory(name) else {
                 throw .syntax(.unknownClassName, offset: start)
             }
             output += (e == 0x70 ? "\\p{" : "\\P{") + name + "}"

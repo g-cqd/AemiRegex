@@ -253,7 +253,7 @@ var rng = rand.New(rand.NewSource(0x9485))
 func pick(items []string) string { return items[rng.Intn(len(items))] }
 
 var cats = []string{"L", "Ll", "Lm", "Lo", "Lt", "Lu", "M", "Mc", "Me", "Mn", "N", "Nd", "Nl", "No", "P", "Pc", "Pd", "Pe", "Pf", "Pi", "Po", "Ps",
-	"Z", "Zl", "Zp", "Zs", "S", "Sc", "Sk", "Sm", "So", "Cc", "Cf", "Co"}
+	"Z", "Zl", "Zp", "Zs", "S", "Sc", "Sk", "Sm", "So", "C", "Cc", "Cf", "Cn", "Co"}
 
 func leafAtom() string {
 	switch rng.Intn(9) {
@@ -329,8 +329,8 @@ func generate(count int) []string {
 }
 
 func haystacks() []string {
-	fixed := []string{"", "a", "ab", "abc", "é", "日本", "a\nb", "a\rb", "\n", "1", "A1", "a-", "^", "$", "^$", "a.b", "()", "[a]", "٣", "€5", "ǅ", "a\u0301", "_", " "}
-	pool := []string{"a", "b", "é", "日", "A", "1", "٣", "€", "ǅ", "\u0301", "\n", "\r", "^", "$", "-", " ", "!", "_", ","}
+	fixed := []string{"", "a", "ab", "abc", "é", "日本", "a\nb", "a\rb", "\n", "1", "A1", "a-", "^", "$", "^$", "a.b", "()", "[a]", "٣", "€5", "ǅ", "a\u0301", "_", " ", "\u0378", "\u0007"}
+	pool := []string{"a", "b", "é", "日", "A", "1", "٣", "€", "ǅ", "\u0301", "\n", "\r", "^", "$", "-", " ", "!", "_", ",", "\u0378"}
 	out := append([]string{}, fixed...)
 	for len(out) < 32 {
 		var b strings.Builder
@@ -346,8 +346,7 @@ type grammarRow struct {
 	P     string `json:"p"`
 	Valid bool   `json:"valid"`
 	// Compiles is set for grammar-valid patterns: whether Go compiles the RFC's mapping. The grammar allows a{3,2} and a{1001}, which no
-	// implementation can run, so an implementation must reject them even though they are in the grammar. C, Cn and Cs are replaced by
-	// Cc for this check only, because Go has no unassigned category.
+	// implementation can run, so an implementation must reject them even though they are in the grammar.
 	Compiles *bool `json:"compiles,omitempty"`
 }
 
@@ -396,8 +395,7 @@ func main() {
 		row := grammarRow{P: p, Valid: rows[p]}
 		if rows[p] {
 			valid++
-			probe := strings.NewReplacer(`{Cn}`, `{Cc}`, `{C}`, `{Cc}`).Replace(translate(p))
-			_, err := regexp.Compile(`\A(?:` + probe + `)\z`)
+			_, err := regexp.Compile(`\A(?:` + translate(p) + `)\z`)
 			ok := err == nil
 			row.Compiles = &ok
 		}
@@ -412,7 +410,7 @@ func main() {
 	hs := haystacks()
 	var corpus []string
 	for _, p := range order {
-		if rows[p] && !strings.Contains(p, `{C}`) && !strings.Contains(p, `{Cn}`) && !strings.Contains(p, `{Cs}`) && len(corpus) < 200 {
+		if rows[p] && len(corpus) < 200 {
 			corpus = append(corpus, p)
 		}
 	}
