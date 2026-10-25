@@ -1,4 +1,4 @@
-/// Searching more than once, and searching a `String`. Each call has one ``BacktrackingPattern/Budget``, shared by every search inside it.
+/// Searching more than once, and searching a `String` or `Substring`. Each call has one ``BacktrackingPattern/Budget``, shared by every search inside it.
 extension BacktrackingPattern {
     /// Runs `body` with a machine over `buffer`; a budget error comes back as a value because the standard library's `with…` calls cannot
     /// carry a typed error.
@@ -19,14 +19,14 @@ extension BacktrackingPattern {
         try (haystack.withUnsafeBufferPointer { unsafe run($0, body) }).get()
     }
 
-    /// As ``search(_:_:)`` over a string's UTF-8: read in place when the string stores it contiguously, copied once when not.
-    func search<Value>(
-        string: String, _ body: (inout BTMachine, ByteBuffer) throws(BacktrackError) -> Value
+    /// As ``search(_:_:)`` over a string's or substring's UTF-8: read in place when stored contiguously, copied once when not.
+    func search<S: StringProtocol, Value>(
+        in text: S, _ body: (inout BTMachine, ByteBuffer) throws(BacktrackError) -> Value
     ) throws(BacktrackError) -> Value {
-        if let outcome = string.utf8.withContiguousStorageIfAvailable({ unsafe run($0, body) }) {
+        if let outcome = text.utf8.withContiguousStorageIfAvailable({ unsafe run($0, body) }) {
             return try outcome.get()
         }
-        return try search(Array(string.utf8), body)
+        return try search(Array(text.utf8), body)
     }
 
     /// Every match, left to right.
@@ -45,27 +45,29 @@ extension BacktrackingPattern {
     /// - Throws: ``BacktrackError/budgetExceeded(_:)`` when the search uses up its ``Budget``.
     public func isMatch(in haystack: [UInt8]) throws(BacktrackError) -> Bool { try firstMatch(in: haystack) != nil }
 
-    /// The leftmost match in `string` that starts at or after `start` (the start of the string when `nil`).
+    /// The leftmost match in `text` that starts at or after `start` (the start of the text when `nil`).
     ///
     /// - Parameters:
-    ///   - string: The text to search.
-    ///   - start: An index of `string`.
+    ///   - text: The text to search (`String` or `Substring`).
+    ///   - start: An index of `text`.
     /// - Returns: The match, or `nil`. Use ``Match/range(in:)`` for `String.Index` ranges.
     /// - Throws: ``BacktrackError/budgetExceeded(_:)`` when the search uses up its ``Budget``.
-    public func firstMatch(in string: String, from start: String.Index? = nil) throws(BacktrackError) -> Match? {
-        let offset = start.map { string.utf8.distance(from: string.utf8.startIndex, to: $0) } ?? 0
-        return try search(string: string) { machine, bytes throws(BacktrackError) in
+    public func firstMatch<S: StringProtocol>(in text: S, from start: S.Index? = nil) throws(BacktrackError) -> Match? {
+        let offset = start.map { text.utf8.distance(from: text.utf8.startIndex, to: $0) } ?? 0
+        return try search(in: text) { machine, bytes throws(BacktrackError) in
             try machine.firstMatch(in: bytes, from: offset)
         }
     }
 
-    /// Every match in `string`, left to right (see ``matches(in:)-([UInt8])``).
+    /// Every match in `text`, left to right (see ``matches(in:)-([UInt8])``).
     /// - Throws: ``BacktrackError/budgetExceeded(_:)`` when the call uses up its ``Budget``.
-    public func matches(in string: String) throws(BacktrackError) -> [Match] {
-        try search(string: string) { machine, bytes throws(BacktrackError) in try machine.allMatches(in: bytes) }
+    public func matches<S: StringProtocol>(in text: S) throws(BacktrackError) -> [Match] {
+        try search(in: text) { machine, bytes throws(BacktrackError) in try machine.allMatches(in: bytes) }
     }
 
-    /// Whether there is a match anywhere in `string`.
+    /// Whether there is a match anywhere in `text`.
     /// - Throws: ``BacktrackError/budgetExceeded(_:)`` when the search uses up its ``Budget``.
-    public func isMatch(in string: String) throws(BacktrackError) -> Bool { try firstMatch(in: string) != nil }
+    public func isMatch<S: StringProtocol>(in text: S) throws(BacktrackError) -> Bool {
+        try firstMatch(in: text) != nil
+    }
 }

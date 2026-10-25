@@ -68,5 +68,6 @@ Phases and their order are in `docs/roadmap/`; read an entry's `status:` and `bl
 I-Regexp (0004, done), Unicode (0005, done), then the Rust gap (0006); ECMAScript, PCRE2 and the budgeted backtracking engine follow Unicode.
 Built: RE2 syntax, I-Regexp with whole-string matching, `\p` over categories and scripts, and Unicode simple case folding, all from generated
 tables (ADR-0009; Go's Unicode 17.0.0); a `String` API; CI (green on Linux and macOS); and `BacktrackingPattern` (ADR-0011) for ECMAScript and
-PCRE2, checked against `node` and `libpcre2`. Not built: ECMAScript properties of strings and non-`u` mode, most PCRE2 verbs, and the Rust gap items of 0006 beyond end-anchored
-patterns, `matchCount` without captures and the terminal-byte jump.
+PCRE2, checked against `node` and `libpcre2`. Completed: RE2, I-Regexp, Unicode (properties, fold), ECMAScript (u/v flags, properties, repeated names), PCRE2 (subroutines, conditionals, flags),
+Backtracker (ADR-0011), String/Substring API (0011), CI gates (0012), and AemiJSON migration (0013).
+In progress: closing the remaining Rust gaps (0006). Blocked: native x86_64 timing (0014).

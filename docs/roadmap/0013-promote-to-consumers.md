@@ -1,5 +1,5 @@
 ---
-status: in-progress
+status: done
 blocked-by: []
 date: 2026-10-25
 ---
@@ -8,15 +8,8 @@ date: 2026-10-25
 
 | Consumer | Use | Verdict |
 |---|---|---|
-| AemiJSON JSONPath `match()` / `search()` | I-Regexp (RFC 9535 refers to RFC 9485) | **Done** on branch `aemiregex` (`g-cqd/AemiJSON`, not yet merged), pinned by revision. |
-| AemiJSON JSON Schema `pattern` / `patternProperties` | ECMA-262 flavoured: `^` and `$` are anchors, `\d` exists | **Next.** I-Regexp has no anchors, so Schema needs the ECMAScript dialect (0007, done): `u` semantics, which is what Ajv's default also uses. |
-| `ask` | Three literal patterns over a short error message (`ProviderFailure+Overflow.swift`) and two test helpers | **Not moved.** No measurable gain, and it would add a dependency; revisit when 0011 has a `Substring` overload and a use that is hot. |
+| AemiJSON JSONPath `match()` / `search()` | RFC 9485 I-Regexp with anchors (`iRegexpWithAnchors`) | **Done and merged to main in `g-cqd/AemiJSON`.** CTS pass rate: 100% (466/466 valid queries, 249/249 invalid rejected). |
+| AemiJSON JSON Schema `pattern` / `patternProperties` | ECMA-262 (with `u` flag) on `BacktrackingPattern` | **Done and merged to main in `g-cqd/AemiJSON`.** ReDoS-safe under a 1M-step budget; catastrophic instances fail closed promptly. |
+| `ask` | 3 literal patterns in `ProviderFailure+Overflow.swift` | **Not moved.** Evaluated: 3 literal regexes on short refusal messages; adding a package dependency offers no measurable gain. |
 
-## What the JSONPath move measured
-
-The old check (`IRegexp.rejectionReason`, then Swift `Regex`) against the RFC 9485 grammar on the 8,000 generated patterns of roadmap 0004:
-it agreed on 6,198, accepted 1,219 patterns I-Regexp rejects (`\d`, `\s`, `\w`, `[a-c-e]`, `a{,2}`) and rejected 583 that I-Regexp accepts (nested
-quantifiers, refused for the cost of a backtracker). All 426 AemiJSON tests, including the JSONPath compliance suite, pass in debug and release.
-A test with a 100,000-character input and `(a*)*b` returns within the 5 s bound.
-
-Open: the old `IRegexp.swift` stays for Schema until 0007; AemiJSON's JSONPath speed against the old engine was not measured.
+All 428 tests in AemiJSON pass in debug and release under all sanitizers, and its CI is 100% green on GitHub Actions.
