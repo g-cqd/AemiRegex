@@ -5,10 +5,13 @@ extension IRegexp {
         let offsets: [Int]
         let limits: Pattern.Limits
         var output = ""
+        /// Whether `^` and `$` outside a class are anchors (``Pattern/Syntax/iRegexpWithAnchors``) and not ordinary characters.
+        let anchors: Bool
         /// Byte offsets of the `(` that are still open.
         var opens: [Int] = []
 
-        init(_ pattern: String, limits: Pattern.Limits) {
+        init(_ pattern: String, limits: Pattern.Limits, anchors: Bool) {
+            self.anchors = anchors
             let text = PatternText(pattern)
             scalars = text.scalars
             offsets = text.offsets
@@ -73,6 +76,11 @@ extension IRegexp {
                         index = try escape(at: index, inClass: false)
                         canQuantify = true
                         afterQuantifier = false
+                    case 0x5E where anchors, 0x24 where anchors:  // ^ $
+                        output.unicodeScalars.append(Unicode.Scalar(c) ?? "?")
+                        canQuantify = false
+                        afterQuantifier = false
+                        index += 1
                     default:
                         guard Self.isNormalChar(c) else { throw .syntax(.invalidCharacter, offset: offset(index)) }
                         appendLiteral(c, inClass: false)

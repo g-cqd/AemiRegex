@@ -37,3 +37,10 @@ Categories came from the standard library (ADR-0008, superseded by ADR-0009). RE
   Whether an erratum exists was not checked.
 - **`\p{C}` and `\p{Cn}` were first tested by unit tests only**, because the Go of the time lacked an unassigned category. Go 1.27 has `Cn`
   and its `C` includes unassigned code points; both are now in the Go-oracle corpus (ADR-0009).
+
+## `iRegexpWithAnchors` (2026-10-25)
+
+`Pattern.Syntax.iRegexpWithAnchors`: every I-Regexp rule, but `^` and `$` outside a class are anchors, as the JSONPath compliance suite's
+`match(@, '^ab.*')` and `match(@, '.*bc$')` tests require. RFC 9485's grammar makes them ordinary characters (`.iRegexp`, unchanged), so this is a
+named deviation, chosen by the caller. Open: whether RFC 9535 intends it (the RFC mapping to XSD does not escape them); an erratum or the
+standard's authors would settle it.
