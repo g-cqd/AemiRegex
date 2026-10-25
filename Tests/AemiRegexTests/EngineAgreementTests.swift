@@ -49,7 +49,7 @@ struct EngineAgreementTests {
         let reference = try Pattern(c.pattern, engine: .pikeOnly).matches(in: bytes)
         #expect(fast == reference)
         for match in fast where match.range.isEmpty {
-            #expect(PikeVM.isBoundary(bytes, match.range.lowerBound), "empty match at \(match.range.lowerBound)")
+            #expect(PikeVM.isBoundary(array: bytes, match.range.lowerBound), "empty match at \(match.range.lowerBound)")
         }
     }
 

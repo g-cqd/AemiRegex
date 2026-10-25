@@ -23,6 +23,16 @@ let all = pattern.matches(in: haystack)
 ```
 
 ```swift
+let pattern = try Pattern(#"(\w+)@(\w+)\.com"#)
+let text = "mail bob@example.com now"
+if let match = pattern.firstMatch(in: text) {
+    text[match.range(in: text)]                       // "bob@example.com"
+    text[match.range(ofGroup: 1, in: text)!]          // "bob"
+}
+pattern.matchCount(in: text)                          // counts without building the matches
+```
+
+```swift
 // I-Regexp (RFC 9485): strictly checked, and a match is the whole string, as the RFC defines it.
 let username = try Pattern(#"[a-z][a-z0-9_]*"#, syntax: .iRegexp)
 username.firstMatch(in: Array("alice_1".utf8)) != nil      // true
