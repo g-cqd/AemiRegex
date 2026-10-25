@@ -46,7 +46,9 @@ wrote, because the translator makes every check it can before the RE2 parser see
    is the leftmost-first start: a smaller start would contradict the forward result, a larger one would not be the smallest.
 4. Without captures the match is `start ..< end`. With captures the Pike VM runs anchored at `start` and stops at `end`.
 5. An empty match inside a multi-byte scalar is dropped and the search resumes one byte later (the Pike VM never starts there).
-6. A DFA whose cache would exceed its limit gives up for the rest of the call and the Pike VM answers.
+6. A DFA whose cache would exceed its limit gives up for the rest of the call and the Pike VM answers. A pattern with an empty-width loop through
+   an assertion (`\b*`, `(\B*?\B|a)*`) never uses the DFA: it resolves assertions a byte late and could walk such a loop once more than the
+   Pike VM does, which reorders alternatives.
 
 ## Where this deliberately differs from the oracles
 

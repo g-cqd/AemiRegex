@@ -28,3 +28,10 @@ genuinely recursive. 100,000 nested parentheses are rejected by the depth limit 
 
 Roadmap 0010 removes the two generators and adds a gate that fails if a function reaches itself. Until it lands the rule is met in the
 library and not yet in the test generators, and that is stated here and nowhere hidden.
+
+## Update, 2026-10-25
+
+Roadmap 0010 landed: the two generators are iterative and `NoRecursionTests` fails if any function in the Swift or Go sources reaches itself.
+The rule now holds in the library, the tests, the benchmarks and the scripts. The gate is a heuristic over labels and receivers (limits in
+roadmap 0010), so it complements the by-construction argument for the engine and does not replace it.
+

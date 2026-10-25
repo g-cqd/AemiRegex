@@ -25,7 +25,7 @@ Build and test in **release**. A debug build measures a program nobody ships, bu
 
 ## Gates
 
-`DocumentationLayoutTests` (documents), `GoldenTests` and `GeneratedGoldenTests` (Go as oracle), `DifferentialTests` (ICU, assertion-free
+`DocumentationLayoutTests` (documents), `NoRecursionTests` (ADR-0003, a heuristic scan of Swift and Go), `GoldenTests` and `GeneratedGoldenTests` (Go as oracle), `DifferentialTests` (ICU, assertion-free
 patterns only), `EngineAgreementTests` and `MalformedInputTests` (the DFA pipeline against the Pike VM, which indexes with checks),
 `SpeedGateTests` (release only: faster than ICU on each workload with equal match counts), `ByteScanTests` and `TeddyTests` (poisoned
 tails, guard bands, dense candidates). The analyzers run under `--strict`: fix a finding, or accept it where it is with a reason
