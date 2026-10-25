@@ -34,16 +34,20 @@ extension Pattern {
         withUTF8(string) { forEachMatch(inBuffer: $0, body) }
     }
 
-    /// The number of matches in `string`, counted without building them.
+    /// The number of matches in `string`, counted without building them; capture groups are not computed.
     public func matchCount(in string: String) -> Int {
         var count = 0
-        forEachMatch(in: string) { _ in
-            count += 1
-            return true
+        withUTF8(string) { buffer in
+            forEachMatch(inBuffer: buffer, needsCaptures: false) { _ in
+                count += 1
+                return true
+            }
         }
         return count
     }
 
     /// Whether there is a match in `string`. For a whole-string pattern: whether the whole string is one.
-    public func isMatch(in string: String) -> Bool { firstMatch(in: string) != nil }
+    public func isMatch(in string: String) -> Bool {
+        withUTF8(string) { firstMatch(inBuffer: $0, from: 0, needsCaptures: false) != nil }
+    }
 }

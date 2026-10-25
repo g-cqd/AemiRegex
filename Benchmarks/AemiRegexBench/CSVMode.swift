@@ -33,7 +33,8 @@ func runCSV(workloadsPath: String, corpusPath: String) {
         guard parts.count == 2 else { continue }
         let (name, pattern) = (parts[0], parts[1])
         if let ours = try? Pattern(pattern) {
-            let r = median(rounds: 9) { blobs.reduce(0) { $0 + ours.matches(in: $1).count } }
+            // Counting, as the other harnesses do: `matches(in:)` would also build a `Match` and a captures array for each match.
+            let r = median(rounds: 9) { blobs.reduce(0) { $0 + ours.matchCount(in: $1) } }
             print("AemiRegex,\(name),\(String(format: "%.2f", r.0)),\(r.1)")
         }
         if let icu = try? NSRegularExpression(pattern: pattern) {
