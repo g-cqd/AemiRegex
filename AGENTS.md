@@ -42,7 +42,8 @@ tails, guard bands, dense candidates). The analyzers run under `--strict`: fix a
   (`__workq_kernreturn`); read the rest as 100%.
 - **An overread by one byte inside an allocation changes no answer.** Release tests cannot see it. Debug builds (bounds-checked
   `UnsafeBufferPointer`), ASan, and poisoned-tail tests can. Run all three after touching `Scan/` or `LazyDFA`.
-- **The corpus moves.** `ask/Sources` is a live repository. `Scripts/bench-compare.sh` snapshots it; compare numbers only from one run.
+- **The corpus moves.** The published numbers used a snapshot of `ask/Sources` (a live repository, not part of this one):
+  `Scripts/bench-compare.sh <dir>` snapshots a directory first; compare numbers only from one run, and only on one corpus.
 - **`@testable` needs `--enable-testable-imports` in release** (same as `ask`, ADR-0006 there).
 - **`Array.span` needs macOS 26.** The floor is 15, so the core takes `UnsafeBufferPointer` inside the module.
 - **Another writer may share the working tree.** Check `git status` for changes you did not make; do not `git add -A` under them.

@@ -37,4 +37,4 @@ if [ "$code_changed" -eq 0 ]; then
 fi
 echo "pre-push: swift test -c release --enable-testable-imports"
 swift test -c release --enable-testable-imports \
-    --scratch-path "${AEMIJSON_RELEASE_SCRATCH:-$HOME/Library/Caches/aemijson/release-build}"
+    --scratch-path "${AEMIREGEX_RELEASE_SCRATCH:-$HOME/Library/Caches/aemiregex/release-build}"

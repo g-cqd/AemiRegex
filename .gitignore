@@ -1,11 +1,12 @@
+_site/
 .build/
+.DS_Store
 .swiftpm/
-DerivedData/
+*.profdata
+*.profraw
 *.xcodeproj
 *.xcworkspace
-*.profraw
-*.profdata
 /.benchmarkBaselines/
-_site/
-.DS_Store
+DerivedData/
 Package.resolved
+target/
