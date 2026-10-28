@@ -22,7 +22,7 @@ let isDev = Context.environment["AEMIREGEX_DEV"] != nil
 var packageDependencies: [Package.Dependency] = []
 if isDev {
     packageDependencies.append(
-        .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "785c6b25cb3f4dc16ca2334fd69428fae4ee0b01"))
+        .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "f6da05cd0efdf60700e854efb5b6092eae89b8c5"))
 }
 
 let package = Package(
