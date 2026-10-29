@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 /// Compiles a ``BTSyntaxTree`` to a ``BTProgram``. The walk is post-order over an explicit work stack, so no tree can overflow the call stack.
 struct BTCompiler {
     let tree: BTSyntaxTree

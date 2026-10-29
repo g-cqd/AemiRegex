@@ -1,7 +1,9 @@
+internal import AemiKernel
+
 /// A compiled pattern: a flat instruction array, the byte sets that instructions refer to, and the capture layout.
 struct Program: Sendable {
     var instructions: ContiguousArray<Instruction>
-    var sets: ContiguousArray<ByteSet>
+    var sets: ContiguousArray<ByteBitmap>
     /// Number of capture groups, not counting the whole match.
     var captureCount: Int
     var names: [String: Int]

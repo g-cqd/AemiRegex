@@ -1,6 +1,9 @@
+internal import AemiKernel
+internal import AemiUnicode
+
 extension BTMachine {
     /// Whether `assertion` holds at `pos`.
-    func holds(_ assertion: BTAssertion, in bytes: ByteBuffer, at pos: Int) -> Bool {
+    func holds(_ assertion: BTAssertion, in bytes: CheckedBytes, at pos: Int) -> Bool {
         switch assertion {
             case .beginText: return pos == 0
             case .endText: return pos == bytes.count
@@ -8,7 +11,7 @@ extension BTMachine {
                 return pos == bytes.count || (pos == bytes.count - 1 && bytes[pos] == 0x0A)
             case .beginLine:
                 if pos == 0 { return true }
-                guard let before = ScalarReader.scalar(in: bytes, before: pos), lineTerminators.contains(before.value)
+                guard let before = UTF8Scalar.scalar(bytes, before: pos), lineTerminators.contains(before.value)
                 else {
                     return false
                 }
@@ -16,7 +19,7 @@ extension BTMachine {
                 return program.dialect == .ecmaScript || pos < bytes.count
             case .endLine:
                 if pos == bytes.count { return true }
-                guard let after = ScalarReader.scalar(in: bytes, at: pos) else { return false }
+                guard let after = UTF8Scalar.scalar(bytes, at: pos) else { return false }
                 return lineTerminators.contains(after.value)
             case .wordBoundary: return isWord(before: pos, in: bytes) != isWord(after: pos, in: bytes)
             case .notWordBoundary: return isWord(before: pos, in: bytes) == isWord(after: pos, in: bytes)
@@ -27,16 +30,16 @@ extension BTMachine {
         }
     }
 
-    private func isWord(before pos: Int, in bytes: ByteBuffer, folded: Bool = false) -> Bool {
+    private func isWord(before pos: Int, in bytes: CheckedBytes, folded: Bool = false) -> Bool {
         guard pos > 0 else { return false }
         if Self.isWordByte(bytes[pos - 1]) { return true }
-        return folded && ScalarReader.scalar(in: bytes, before: pos).map { Self.isFoldedWord($0.value) } == true
+        return folded && UTF8Scalar.scalar(bytes, before: pos).map { Self.isFoldedWord($0.value) } == true
     }
 
-    private func isWord(after pos: Int, in bytes: ByteBuffer, folded: Bool = false) -> Bool {
+    private func isWord(after pos: Int, in bytes: CheckedBytes, folded: Bool = false) -> Bool {
         guard pos < bytes.count else { return false }
         if Self.isWordByte(bytes[pos]) { return true }
-        return folded && ScalarReader.scalar(in: bytes, at: pos).map { Self.isFoldedWord($0.value) } == true
+        return folded && UTF8Scalar.scalar(bytes, at: pos).map { Self.isFoldedWord($0.value) } == true
     }
 
     private static func isFoldedWord(_ scalar: UInt32) -> Bool { scalar == 0x17F || scalar == 0x212A }

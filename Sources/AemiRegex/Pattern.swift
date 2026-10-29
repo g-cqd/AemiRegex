@@ -1,3 +1,6 @@
+internal import AemiKernel
+internal import AemiRuntime
+
 /// A compiled regular expression.
 ///
 /// The syntax is RE2's: no backreferences and no lookaround, which is what lets every search run in time proportional to
@@ -16,7 +19,7 @@ public struct Pattern: Sendable {
     /// Whether searches jump between occurrences of ``terminalByte``: it has one, and no prefix or literal set guides the search better.
     let jumpsToTerminalByte: Bool
     let plan: DFAPlan?
-    let pool: ScratchPool
+    let pool: ScratchPool<SearchScratch>
 
     /// Compiles `pattern`.
     /// - Throws: ``PatternError`` for malformed syntax, an unsupported construct, or a pattern over a limit.
@@ -124,7 +127,7 @@ public struct Pattern: Sendable {
     /// - Returns: The match, or `nil` when there is none.
     /// - Complexity: O(pattern size × haystack size) worst case; O(haystack size) once the DFA has built its states.
     public func firstMatch(in haystack: [UInt8], from start: Int = 0) -> Match? {
-        haystack.withUnsafeBufferPointer { unsafe firstMatch(inBuffer: ByteBuffer($0), from: start) }
+        haystack.withUnsafeBufferPointer { unsafe firstMatch(inBuffer: CheckedBytes($0), from: start) }
     }
 
     /// Every non-overlapping match, left to right. An empty match that touches the previous match is skipped, as in RE2 and Go.
@@ -146,14 +149,14 @@ public struct Pattern: Sendable {
     ///   - body: Receives a match; return `false` to stop.
     /// - Complexity: As ``matches(in:)``; allocates nothing per match for a pattern without capture groups.
     public func forEachMatch(in haystack: [UInt8], _ body: (Match) -> Bool) {
-        haystack.withUnsafeBufferPointer { unsafe forEachMatch(inBuffer: ByteBuffer($0), body) }
+        haystack.withUnsafeBufferPointer { unsafe forEachMatch(inBuffer: CheckedBytes($0), body) }
     }
 
     /// The number of matches ``matches(in:)`` would list, counted without building them.
     public func matchCount(in haystack: [UInt8]) -> Int {
         var count = 0
         haystack.withUnsafeBufferPointer { buffer in
-            unsafe forEachMatch(inBuffer: ByteBuffer(buffer), needsCaptures: false) { _ in
+            unsafe forEachMatch(inBuffer: CheckedBytes(buffer), needsCaptures: false) { _ in
                 count += 1
                 return true
             }
@@ -164,7 +167,7 @@ public struct Pattern: Sendable {
     /// Whether there is a match. For a whole-string pattern: whether the whole text is one.
     public func isMatch(in haystack: [UInt8]) -> Bool {
         haystack.withUnsafeBufferPointer {
-            unsafe firstMatch(inBuffer: ByteBuffer($0), from: 0, needsCaptures: false) != nil
+            unsafe firstMatch(inBuffer: CheckedBytes($0), from: 0, needsCaptures: false) != nil
         }
     }
 

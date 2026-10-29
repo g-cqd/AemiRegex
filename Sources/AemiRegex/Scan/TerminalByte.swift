@@ -1,3 +1,5 @@
+internal import AemiKernel
+
 /// The byte that every match of a pattern ends with and that nothing else in the pattern can consume.
 ///
 /// Such a byte lets a search jump from one occurrence to the next instead of scanning every byte. No match can contain two of them, so
@@ -25,13 +27,13 @@ enum TerminalByte {
             guard closure.consumers(from: pc + 1).pcs.isEmpty, finals.count < maxFinals else { return nil }
             finals.append(pc)
         }
-        var accepted = ByteSet()
+        var accepted = ByteBitmap()
         for pc in finals { closure.add(pc, to: &accepted) }
         let bytes = accepted.members
         guard bytes.count == 1, let byte = bytes.first, byte < 0x80 else { return nil }
         let isFinal = Set(finals)
         for pc in code.indices where isConsumer(code[pc]) && !isFinal.contains(pc) {
-            var set = ByteSet()
+            var set = ByteBitmap()
             closure.add(pc, to: &set)
             if set.contains(byte) { return nil }
         }

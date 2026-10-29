@@ -1,10 +1,12 @@
+internal import AemiUnicode
+
 /// A set of scalars with a bitmap for ASCII, which is most of what a search tests.
 struct CharSet: Sendable {
     private let low: UInt64
     private let high: UInt64
-    let scalars: ScalarSet
+    let scalars: UnicodeScalarSet
 
-    init(_ scalars: ScalarSet) {
+    init(_ scalars: UnicodeScalarSet) {
         self.scalars = scalars
         var low: UInt64 = 0
         var high: UInt64 = 0

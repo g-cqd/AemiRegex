@@ -1,12 +1,14 @@
+internal import AemiKernel
+
 /// Searching a `String` or `Substring`: its UTF-8 is read in place when the string stores it contiguously (a native Swift string does),
 /// and copied once when it does not (a bridged `NSString`). Matches are the same `Match` values as for bytes; ``Match/range(in:)`` maps them back.
 extension Pattern {
     /// Runs `body` on the UTF-8 of `text`: in place when contiguous, else on a copy.
-    private func withUTF8<S: StringProtocol, Result>(_ text: S, _ body: (ByteBuffer) -> Result) -> Result {
-        if let result = text.utf8.withContiguousStorageIfAvailable({ unsafe body(ByteBuffer($0)) }) {
+    private func withUTF8<S: StringProtocol, Result>(_ text: S, _ body: (CheckedBytes) -> Result) -> Result {
+        if let result = text.utf8.withContiguousStorageIfAvailable({ unsafe body(CheckedBytes($0)) }) {
             return result
         }
-        return Array(text.utf8).withUnsafeBufferPointer { unsafe body(ByteBuffer($0)) }
+        return Array(text.utf8).withUnsafeBufferPointer { unsafe body(CheckedBytes($0)) }
     }
 
     /// The leftmost match in `text` that starts at or after `start` (the start of the text when `nil`).

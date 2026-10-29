@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 extension BTParser {
     /// Parses `[...]` at the current position and adds the set it denotes.
     mutating func parseClass() throws(PatternError) {
@@ -30,9 +32,9 @@ extension BTParser {
                 append(low, to: &members, fixed: &fixed)
             }
         }
-        var set = ScalarSet(normalizing: members)
-        if flags.ignoreCase { set = set.folded() }
-        set = set.union(ScalarSet(normalizing: fixed))
+        var set = UnicodeScalarSet(normalizing: members)
+        if flags.ignoreCase { set = set.simpleCaseClosure() }
+        set = set.union(UnicodeScalarSet(normalizing: fixed))
         try addSet(negated ? set.negated() : set)
     }
 
@@ -59,7 +61,7 @@ extension BTParser {
     }
 
     /// `[:alpha:]` inside a PCRE2 class, or `nil` when the text is not one.
-    private mutating func posixClass() throws(PatternError) -> ScalarSet? {
+    private mutating func posixClass() throws(PatternError) -> UnicodeScalarSet? {
         var end = position + 2
         while end + 1 < scalars.count, scalars[end] != 0x3A, scalars[end] != 0x5D { end += 1 }
         guard end + 1 < scalars.count, scalars[end] == 0x3A, scalars[end + 1] == 0x5D else { return nil }

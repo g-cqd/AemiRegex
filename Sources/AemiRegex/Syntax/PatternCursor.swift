@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 /// A pattern decoded into scalars with a read position: what the RE2 parser and the backtracker's parser share.
 protocol PatternCursor {
     var scalars: [UInt32] { get }
@@ -102,7 +104,7 @@ extension PatternCursor {
         while let c = peek(), c != 0x7D {
             guard let digit = Self.hexValue(c), digit < radix else { throw .syntax(.invalidEscape, offset: at) }
             value = value * radix + digit
-            guard value <= ScalarSet.maxScalar else { throw .syntax(.invalidScalar, offset: at) }
+            guard value <= UnicodeScalarSet.maxScalar else { throw .syntax(.invalidScalar, offset: at) }
             position += 1
             count += 1
         }
