@@ -1,3 +1,5 @@
+internal import AemiKernel
+
 /// The threads alive at one input position, in priority order, with each thread's capture slots.
 struct ThreadList {
     var set: SparseSet

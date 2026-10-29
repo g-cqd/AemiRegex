@@ -1,3 +1,6 @@
+internal import AemiKernel
+internal import AemiKernels
+
 /// A scan that skips to the next position where a match could start. It may offer a position where no match starts, never skip one
 /// where a match does.
 struct Prefilter: Sendable {
@@ -15,20 +18,21 @@ struct Prefilter: Sendable {
     }
 
     let kind: Kind
-    private let needles: [SIMD16<UInt8>]
+    /// The set, broadcast once into SIMD lanes: a set of at most eight bytes always fits.
+    private let byteSet: AemiKernels.SmallByteSet?
     private let teddy: Teddy?
 
     init(_ kind: Kind) {
         self.kind = kind
         switch kind {
             case .set(let bytes):
-                needles = bytes.map { SIMD16(repeating: $0) }
+                byteSet = AemiKernels.SmallByteSet(bytes)
                 teddy = nil
             case .pairs(let pairs):
-                needles = []
+                byteSet = nil
                 teddy = Teddy(pairs)
             default:
-                needles = []
+                byteSet = nil
                 teddy = nil
         }
     }
@@ -40,7 +44,13 @@ struct Prefilter: Sendable {
             case .byte(let byte): unsafe ByteScan.firstIndex(of: byte, in: bytes, from: from)
             case .pair(let first, let second): unsafe ByteScan.firstIndex(ofPair: first, second, in: bytes, from: from)
             case .pairs: unsafe teddy?.firstCandidate(in: bytes, from: from)
-            case .set(let set): unsafe ByteScan.firstIndex(ofAnyNeedles: needles, bytes: set, in: bytes, from: from)
+            case .set:
+                // No table means a set too large for it, which the constructor never makes; every position is then offered.
+                if let byteSet {
+                    unsafe byteSet.firstIndex(in: bytes, from: from)
+                } else {
+                    from <= bytes.count ? from : nil
+                }
         }
     }
 
@@ -92,7 +102,7 @@ struct Prefilter: Sendable {
             self.init(.none)
             return
         }
-        var firstBytes = ByteSet()
+        var firstBytes = ByteBitmap()
         for pc in first.pcs { closure.add(pc, to: &firstBytes) }
         let literal = closure.literalPrefix(maxLength: 2)
         switch literal.count {

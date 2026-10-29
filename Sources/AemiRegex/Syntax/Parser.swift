@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 /// Parses a pattern and compiles it in one pass, without a syntax tree and without recursion: groups live on an explicit stack.
 struct Parser: PatternCursor {
     let scalars: [UInt32]
@@ -82,7 +84,9 @@ struct Parser: PatternCursor {
             case 0x5B: try parseClass()
             case 0x2E:
                 try emitSet(
-                    flags.dotAll ? ScalarSet(normalizing: [0 ... ScalarSet.maxScalar]) : ScalarSet.newline.negated())
+                    flags.dotAll
+                        ? UnicodeScalarSet(normalizing: [0 ... UnicodeScalarSet.maxScalar])
+                        : UnicodeScalarSet.newline.negated())
                 position += 1
             case 0x5E:
                 try emit([.assertion(oriented(flags.multiLine ? .beginLine : .beginText))], nullable: true)
@@ -112,13 +116,13 @@ struct Parser: PatternCursor {
         top.push(code, nullable: nullable)
     }
 
-    mutating func emitSet(_ set: ScalarSet) throws(PatternError) {
+    mutating func emitSet(_ set: UnicodeScalarSet) throws(PatternError) {
         try emit(classes.compile(set, reversed: reverse), nullable: false)
     }
 
     mutating func emitLiteral(_ scalar: UInt32) throws(PatternError) {
-        let set = ScalarSet(scalar)
-        try emitSet(flags.ignoreCase ? set.folded() : set)
+        let set = UnicodeScalarSet(scalar)
+        try emitSet(flags.ignoreCase ? set.simpleCaseClosure() : set)
     }
 
     // MARK: Groups

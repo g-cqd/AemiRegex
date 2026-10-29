@@ -12,7 +12,6 @@ swift test --sanitize=address --sanitize=undefined --enable-testable-imports
 swift test --sanitize=thread --enable-testable-imports
 AEMIREGEX_DEV=1 swift package --disable-sandbox lint     # the shared Aemi lint; also the pre-commit hook's formatter
 Scripts/analyzers.sh                                     # deadwood, dolly, arcleak, pinned by version and SHA-256
-Scripts/teddy-check.sh                                   # the C kernel: SIMD vs scalar, ASan+UBSan, x86_64 under Rosetta
 Scripts/bench-compare.sh                                 # AemiRegex vs ICU, Swift Regex, Go, Rust regex, PCRE2 JIT (frozen corpus)
 go run Scripts/golden/gen.go > Tests/AemiRegexTests/Resources/re2-golden.jsonl            # regenerate the Go oracle fixtures
 go run Scripts/golden/generated/gen.go > Tests/AemiRegexTests/Resources/re2-generated.jsonl
@@ -55,8 +54,8 @@ tails, guard bands, dense candidates). The analyzers run under `--strict`: fix a
 
 ## Dependencies
 
-None for the engine. `CAemiRegex` is the one C target (ADR-0004). Dev tooling comes from Aemi at a pinned revision under
-`AEMIREGEX_DEV=1` only, so consumers never resolve it.
+Aemi, at the revision AemiJSON, AemiMarkdown and TerminalKit pin (ADR-0013): AemiKernels, AemiKernel, AemiUnicode, AemiRuntime, and the
+shared lint and format plugins. A general piece found here belongs in Aemi, with its tests, red first.
 
 ## Commit discipline
 

@@ -1,3 +1,5 @@
+internal import AemiKernel
+
 /// A lazily built DFA over a program that cannot match empty.
 ///
 /// A state is the ordered list of program counters that would be alive in the Pike VM, plus a header: whether a match was already
@@ -33,7 +35,7 @@ struct LazyDFA {
     }
 
     private let instructions: ContiguousArray<Instruction>
-    private let sets: ContiguousArray<ByteSet>
+    private let sets: ContiguousArray<ByteBitmap>
     let classes: ByteClasses
     private let anchored: Bool
     private let longest: Bool

@@ -1,3 +1,6 @@
+internal import AemiKernel
+internal import AemiUnicode
+
 /// Runs a ``BTProgram`` over a haystack with an explicit stack. One value serves one public call, so its budget is shared by every search
 /// that call makes.
 struct BTMachine {
@@ -13,7 +16,7 @@ struct BTMachine {
     /// The subroutine calls made so far in this run, and the innermost one still open (-1 when none).
     var callFrames: [BTCallFrame] = []
     var currentFrame = -1
-    let lineTerminators: ScalarSet
+    let lineTerminators: UnicodeScalarSet
 
     init(_ program: BTProgram, budget: BacktrackingPattern.Budget) {
         self.program = program
@@ -31,7 +34,7 @@ struct BTMachine {
     /// - Returns: The match, or `nil` when there is none.
     /// - Throws: ``BacktrackError`` when a budget runs out.
     mutating func firstMatch(
-        in bytes: ByteBuffer, from start: Int, anchored: Bool = false, nonEmptyAtStart: Bool = false
+        in bytes: CheckedBytes, from start: Int, anchored: Bool = false, nonEmptyAtStart: Bool = false
     ) throws(BacktrackError) -> Match? {
         guard start >= 0, start <= bytes.count else { return nil }
         forbiddenEmpty = nonEmptyAtStart ? start : nil
@@ -40,7 +43,7 @@ struct BTMachine {
         while begin <= bytes.count {
             if try run(in: bytes, from: begin) { return match() }
             if anchored || begin == bytes.count { break }
-            begin += ScalarReader.step(in: bytes, at: begin)
+            begin += UTF8Scalar.step(bytes, at: begin)
         }
         return nil
     }
@@ -55,7 +58,7 @@ struct BTMachine {
         return Match(range: slots[0] ..< slots[1], captures: captures)
     }
 
-    private mutating func run(in bytes: ByteBuffer, from start: Int) throws(BacktrackError) -> Bool {
+    private mutating func run(in bytes: CheckedBytes, from start: Int) throws(BacktrackError) -> Bool {
         for index in slots.indices { slots[index] = -1 }
         stack.removeAll(keepingCapacity: true)
         marks.removeAll(keepingCapacity: true)
@@ -83,7 +86,7 @@ struct BTMachine {
 
     /// Runs one instruction, moving `pc` and `pos` on.
     private mutating func execute(
-        _ instruction: BTInstruction, in bytes: ByteBuffer, pc: inout Int, pos: inout Int
+        _ instruction: BTInstruction, in bytes: CheckedBytes, pc: inout Int, pos: inout Int
     ) throws(BacktrackError) -> Step {
         var ok = true
         switch instruction.op {
@@ -116,7 +119,7 @@ struct BTMachine {
                 pc += 1
             case .stepBack:
                 for _ in 0 ..< Int(instruction.x) {
-                    guard let before = ScalarReader.scalar(in: bytes, before: pos) else {
+                    guard let before = UTF8Scalar.scalar(bytes, before: pos) else {
                         ok = false
                         break
                     }
@@ -148,9 +151,9 @@ struct BTMachine {
 
     // MARK: Consuming
 
-    private func consume(_ instruction: BTInstruction, in bytes: ByteBuffer, at pos: inout Int) -> Bool {
+    private func consume(_ instruction: BTInstruction, in bytes: CheckedBytes, at pos: inout Int) -> Bool {
         let found =
-            instruction.backward ? ScalarReader.scalar(in: bytes, before: pos) : ScalarReader.scalar(in: bytes, at: pos)
+            instruction.backward ? UTF8Scalar.scalar(bytes, before: pos) : UTF8Scalar.scalar(bytes, at: pos)
         guard let (value, width) = found else { return false }
         if instruction.op == .char {
             guard value == UInt32(truncatingIfNeeded: instruction.x) else { return false }

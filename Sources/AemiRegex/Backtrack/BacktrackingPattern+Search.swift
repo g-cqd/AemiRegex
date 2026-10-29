@@ -1,27 +1,29 @@
+internal import AemiKernel
+
 /// Searching more than once, and searching a `String` or `Substring`. Each call has one ``BacktrackingPattern/Budget``, shared by every search inside it.
 extension BacktrackingPattern {
     /// Runs `body` with a machine over `buffer`; a budget error comes back as a value because the standard library's `with…` calls cannot
     /// carry a typed error.
     private func run<Value>(
-        _ buffer: UnsafeBufferPointer<UInt8>, _ body: (inout BTMachine, ByteBuffer) throws(BacktrackError) -> Value
+        _ buffer: UnsafeBufferPointer<UInt8>, _ body: (inout BTMachine, CheckedBytes) throws(BacktrackError) -> Value
     ) -> Result<Value, BacktrackError> {
         var machine = BTMachine(program, budget: budget)
         do throws(BacktrackError) {
-            return .success(try body(&machine, unsafe ByteBuffer(buffer)))
+            return .success(try body(&machine, unsafe CheckedBytes(buffer)))
         } catch {
             return .failure(error)
         }
     }
 
     func search<Value>(
-        _ haystack: [UInt8], _ body: (inout BTMachine, ByteBuffer) throws(BacktrackError) -> Value
+        _ haystack: [UInt8], _ body: (inout BTMachine, CheckedBytes) throws(BacktrackError) -> Value
     ) throws(BacktrackError) -> Value {
         try (haystack.withUnsafeBufferPointer { unsafe run($0, body) }).get()
     }
 
     /// As ``search(_:_:)`` over a string's or substring's UTF-8: read in place when stored contiguously, copied once when not.
     func search<S: StringProtocol, Value>(
-        in text: S, _ body: (inout BTMachine, ByteBuffer) throws(BacktrackError) -> Value
+        in text: S, _ body: (inout BTMachine, CheckedBytes) throws(BacktrackError) -> Value
     ) throws(BacktrackError) -> Value {
         if let outcome = text.utf8.withContiguousStorageIfAvailable({ unsafe run($0, body) }) {
             return try outcome.get()

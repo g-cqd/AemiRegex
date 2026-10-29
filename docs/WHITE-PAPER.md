@@ -61,8 +61,9 @@ Expected values come from the oracle, not from the author.
 
 ## Dependencies
 
-The engine has no package dependencies and no Foundation. The one C target holds a kernel Swift cannot express (a variable byte shuffle),
-under a measured bar (ADR-0004). Anything added is an architectural decision recorded as an ADR, with the alternatives compared.
+The engine depends on Aemi, the family it belongs to, and on nothing else; no Foundation (ADR-0013). Its byte kernels (the multi-literal
+kernel, which Swift cannot express, under the bar of ADR-0004), UTF-8 reading, scratch pool and generated Unicode data are Aemi's, so the
+family keeps one copy of each. Anything else added is an architectural decision recorded as an ADR, with the alternatives compared.
 
 ## Documentation law
 

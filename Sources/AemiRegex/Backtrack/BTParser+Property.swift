@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 extension BTParser {
     /// Parses what follows `\p` or `\P`: `{Name}`, `{Key=Value}` or, in PCRE2, a single letter.
     /// - Returns: The set, already inverted for `\P` and `{^Name}`, and widened by case folding where the dialect does so.
@@ -27,11 +29,11 @@ extension BTParser {
             guard let set = ecmaProperty(name) else { throw .syntax(.unknownClassName, offset: at) }
             // With `u`, ECMAScript complements first and folds after, so `\P{Lowercase}` under `i` still matches `A`; with `v`, the other way.
             if flags.unicodeSets {
-                let folded = flags.ignoreCase ? set.folded() : set
+                let folded = flags.ignoreCase ? set.simpleCaseClosure() : set
                 return .set(invert ? folded.negated() : folded)
             }
             let base = invert ? set.negated() : set
-            return .set(flags.ignoreCase ? base.folded() : base)
+            return .set(flags.ignoreCase ? base.simpleCaseClosure() : base)
         }
         let (set, cased) = try pcreProperty(name, at: at)
         // Caseless matching turns `\p{Lu}`, `\p{Ll}` and `\p{Lt}` into `\p{L&}`; no other property changes.
@@ -48,7 +50,7 @@ extension BTParser {
 
     /// An ECMAScript property: `General_Category=Lu`, `Script=Greek`, `Script_Extensions=Greek` (and `gc`, `sc`, `scx`), or a bare general
     /// category or binary property. Names are exact.
-    private func ecmaProperty(_ name: String) -> ScalarSet? {
+    private func ecmaProperty(_ name: String) -> UnicodeScalarSet? {
         guard let equals = name.firstIndex(of: "=") else {
             return UnicodeProperties.exactCategory(name) ?? UnicodeBinaryProperties.binary(name, .exact)
         }
@@ -63,7 +65,7 @@ extension BTParser {
 
     /// A PCRE2 property, names read loosely. A bare script name means Script_Extensions; `sc=` means Script.
     /// - Returns: The set, and whether caseless matching widens it (only the cased letters `Lu`, `Ll`, `Lt`, `L&`).
-    private func pcreProperty(_ raw: String, at: Int) throws(PatternError) -> (ScalarSet, cased: Bool) {
+    private func pcreProperty(_ raw: String, at: Int) throws(PatternError) -> (UnicodeScalarSet, cased: Bool) {
         let separator = raw.firstIndex { $0 == "=" || $0 == ":" }
         if let separator {
             let key = UnicodeBinaryProperties.loose(String(raw[..<separator]))
@@ -82,12 +84,13 @@ extension BTParser {
         }
         let key = UnicodeBinaryProperties.loose(raw)
         switch key {
-            case "any": return (ScalarSet(normalizing: [0 ... ScalarSet.maxScalar]), false)
-            case "l&", "lc": return (UnicodeProperties.category(code: "LC") ?? ScalarSet(), true)
-            case "xan": return (letters.union(UnicodeProperties.category(code: "N") ?? ScalarSet()), false)
+            case "any": return (UnicodeScalarSet(normalizing: [0 ... UnicodeScalarSet.maxScalar]), false)
+            case "l&", "lc": return (UnicodeProperties.category(code: "LC") ?? UnicodeScalarSet(), true)
+            case "xan": return (letters.union(UnicodeProperties.category(code: "N") ?? UnicodeScalarSet()), false)
             case "xwd":
                 return (
-                    letters.union(UnicodeProperties.category(code: "N") ?? ScalarSet()).union(ScalarSet(0x5F)), false
+                    letters.union(UnicodeProperties.category(code: "N") ?? UnicodeScalarSet())
+                        .union(UnicodeScalarSet(0x5F)), false
                 )
             case "xsp", "xps": return (Self.perlSpace, false)
             case "xuc": return (Self.universalCharacters, false)
@@ -97,22 +100,24 @@ extension BTParser {
         if key != "assigned", let set = UnicodeBinaryProperties.binary(raw, .loose) { return (set, false) }
         // A bare script name matches a character that has the script or lists it among its extensions.
         if let extensions = UnicodeBinaryProperties.scriptExtensions(raw, .loose) {
-            return (extensions.union(UnicodeBinaryProperties.script(raw, .loose) ?? ScalarSet()), false)
+            return (extensions.union(UnicodeBinaryProperties.script(raw, .loose) ?? UnicodeScalarSet()), false)
         }
         throw .syntax(.unknownClassName, offset: at)
     }
 
-    private var letters: ScalarSet { UnicodeProperties.category(code: "L") ?? ScalarSet() }
+    private var letters: UnicodeScalarSet { UnicodeProperties.category(code: "L") ?? UnicodeScalarSet() }
 
     /// PCRE2's `Xsp` and `Xps`: the characters Perl calls space.
-    private static let perlSpace = BTSets.pcreSpace.union(UnicodeProperties.category(code: "Z") ?? ScalarSet())
+    private static let perlSpace = BTSets.pcreSpace.union(UnicodeProperties.category(code: "Z") ?? UnicodeScalarSet())
 
     /// PCRE2's `Xuc`: the characters a universal character name may stand for.
-    private static let universalCharacters = ScalarSet(
-        normalizing: [0x24 ... 0x24, 0x40 ... 0x40, 0x60 ... 0x60, 0xA0 ... 0xD7FF, 0xE000 ... ScalarSet.maxScalar])
+    private static let universalCharacters = UnicodeScalarSet(
+        normalizing: [
+            0x24 ... 0x24, 0x40 ... 0x40, 0x60 ... 0x60, 0xA0 ... 0xD7FF, 0xE000 ... UnicodeScalarSet.maxScalar
+        ])
 
     /// A general category by its code with case ignored (`lu` is `Lu`), or `nil`: PCRE2 has no long names.
-    private static func category(loose key: String) -> ScalarSet? {
+    private static func category(loose key: String) -> UnicodeScalarSet? {
         guard key.utf8.count <= 2, let first = key.first else { return nil }
         let code = String(first).uppercased() + key.dropFirst()
         return UnicodeProperties.category(code: code)

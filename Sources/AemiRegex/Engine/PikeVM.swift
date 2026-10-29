@@ -1,3 +1,5 @@
+internal import AemiKernel
+
 /// A Pike VM: simulates every thread of the pattern in lock step over the input, so the time is O(pattern × input) for every
 /// pattern. The thread order is the priority order, which gives leftmost-first matches with captures.
 struct PikeVM {
@@ -31,7 +33,7 @@ struct PikeVM {
     ///   - limit: Treat the input as ending here for consuming bytes; assertions still see the whole haystack. A match found by
     ///     the DFA ends at its limit, so the Pike VM need not run further to fill in the captures.
     /// - Returns: `true` when a match was found; its slots are in ``best``.
-    mutating func search(_ haystack: ByteBuffer, from start: Int, anchored: Bool = false, limit: Int? = nil) -> Bool {
+    mutating func search(_ haystack: CheckedBytes, from start: Int, anchored: Bool = false, limit: Int? = nil) -> Bool {
         let length = min(limit ?? haystack.count, haystack.count)
         allocateIfNeeded()
         var found = false
@@ -91,13 +93,13 @@ struct PikeVM {
     }
 
     /// Moves the thread at `pc` past its byte instruction, into the next list.
-    private mutating func advance(from pc: Int, to position: Int, _ haystack: ByteBuffer) {
+    private mutating func advance(from pc: Int, to position: Int, _ haystack: CheckedBytes) {
         for slot in 0 ..< slotCount { working[slot] = current.slots[pc * slotCount + slot] }
         follow(pc + 1, at: position, haystack, intoNext: true)
     }
 
     /// Adds the thread at `start` and every thread reachable from it without consuming input, in priority order.
-    private mutating func follow(_ start: Int, at position: Int, _ haystack: ByteBuffer, intoNext: Bool) {
+    private mutating func follow(_ start: Int, at position: Int, _ haystack: CheckedBytes, intoNext: Bool) {
         stack.append(.explore(start))
         while let entry = stack.popLast() {
             switch entry {
@@ -138,7 +140,7 @@ struct PikeVM {
 
     // MARK: Position tests
 
-    private static func holds(_ assertion: Assertion, _ haystack: ByteBuffer, _ position: Int) -> Bool {
+    private static func holds(_ assertion: Assertion, _ haystack: CheckedBytes, _ position: Int) -> Bool {
         let before = position > 0 ? haystack[position - 1] : nil
         let after = position < haystack.count ? haystack[position] : nil
         switch assertion {
@@ -158,10 +160,10 @@ struct PikeVM {
     }
 
     /// Whether a match may start at `position`: not in the middle of a valid multi-byte scalar.
-    static func isBoundary(_ haystack: ByteBuffer, _ position: Int) -> Bool {
+    static func isBoundary(_ haystack: CheckedBytes, _ position: Int) -> Bool {
         guard position < haystack.count, (0x80 ... 0xBF).contains(haystack[position]) else { return true }
         for back in 1 ... 3 where position - back >= 0 {
-            let width = Utf8.width(of: haystack, at: position - back)
+            let width = UTF8Scalar.width(haystack, at: position - back)
             if width > back { return false }
         }
         return true
@@ -169,6 +171,6 @@ struct PikeVM {
 
     /// ``isBoundary(_:_:)`` for an array, for the code that holds one (a different label: the recursion scan reads labels, not types).
     static func isBoundary(array haystack: [UInt8], _ position: Int) -> Bool {
-        haystack.withUnsafeBufferPointer { unsafe isBoundary(ByteBuffer($0), position) }
+        haystack.withUnsafeBufferPointer { unsafe isBoundary(CheckedBytes($0), position) }
     }
 }
