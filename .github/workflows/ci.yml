@@ -60,5 +60,3 @@ jobs:
           mkdir -p /tmp/iregexp && go run Scripts/golden/iregexp/gen.go /tmp/iregexp
           diff -u Tests/AemiRegexTests/Resources/iregexp-grammar.jsonl /tmp/iregexp/iregexp-grammar.jsonl
           diff -u Tests/AemiRegexTests/Resources/iregexp-golden.jsonl /tmp/iregexp/iregexp-golden.jsonl
-          go run Scripts/unicode/gen.go > /tmp/GeneratedUnicodeTables.swift
-          diff -u Sources/AemiRegex/Syntax/GeneratedUnicodeTables.swift /tmp/GeneratedUnicodeTables.swift

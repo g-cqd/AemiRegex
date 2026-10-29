@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 /// Parses ECMAScript and PCRE2 syntax into a ``BTSyntaxTree``. Groups live on an explicit stack, so no pattern can overflow the call stack.
 struct BTParser: PatternCursor {
     let scalars: [UInt32]
@@ -107,7 +109,8 @@ struct BTParser: PatternCursor {
             case 0x5B: try (flags.unicodeSets ? parseSetClass() : parseClass())
             case 0x2E:
                 let lines = BTSets.lineTerminators(dialect)
-                try addSet(flags.dotAll ? ScalarSet(normalizing: [0 ... ScalarSet.maxScalar]) : lines.negated())
+                try addSet(
+                    flags.dotAll ? UnicodeScalarSet(normalizing: [0 ... UnicodeScalarSet.maxScalar]) : lines.negated())
                 position += 1
             case 0x5E:
                 try add(.assertion(flags.multiLine ? .beginLine : .beginText))
@@ -149,15 +152,15 @@ struct BTParser: PatternCursor {
         return nodes.count - 1
     }
 
-    mutating func addSet(_ set: ScalarSet) throws(PatternError) {
+    mutating func addSet(_ set: UnicodeScalarSet) throws(PatternError) {
         sets.append(CharSet(set))
         try add(.set(sets.count - 1))
     }
 
     /// A literal scalar, folded when `i` is on.
     mutating func addLiteral(_ scalar: UInt32) throws(PatternError) {
-        let set = ScalarSet(scalar)
-        try addSet(flags.ignoreCase ? set.folded() : set)
+        let set = UnicodeScalarSet(scalar)
+        try addSet(flags.ignoreCase ? set.simpleCaseClosure() : set)
     }
 
     /// The node for items matched one after another.

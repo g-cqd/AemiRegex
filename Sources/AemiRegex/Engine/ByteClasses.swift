@@ -1,3 +1,5 @@
+internal import AemiKernel
+
 /// Partitions the 256 byte values into classes that no instruction of the program tells apart, so a DFA row has one entry per
 /// class instead of one per byte.
 struct ByteClasses: Sendable {

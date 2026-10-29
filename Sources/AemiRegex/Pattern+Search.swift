@@ -1,8 +1,11 @@
+internal import AemiKernel
+internal import AemiRuntime
+
 extension Pattern {
     /// The leftmost match at or after `start` in a borrowed buffer, or `nil` (and `nil` for a `start` outside it).
     ///
     /// With `needsCaptures` false the match carries only its range, and a pattern with capture groups does not run the Pike VM to fill them in.
-    func firstMatch(inBuffer buffer: ByteBuffer, from start: Int, needsCaptures: Bool = true) -> Match? {
+    func firstMatch(inBuffer buffer: CheckedBytes, from start: Int, needsCaptures: Bool = true) -> Match? {
         guard start >= 0, start <= buffer.count else { return nil }
         var allowDFA = true
         return pool.withScratch { search(&$0, buffer, from: start, needsCaptures: needsCaptures, allowDFA: &allowDFA) }
@@ -10,7 +13,7 @@ extension Pattern {
 
     /// Calls `body` with each match in a borrowed buffer, left to right; `body` returns `false` to stop. An empty match that touches the
     /// previous one is skipped and the position advances one scalar, as in RE2 and Go.
-    func forEachMatch(inBuffer buffer: ByteBuffer, needsCaptures: Bool = true, _ body: (Match) -> Bool) {
+    func forEachMatch(inBuffer buffer: CheckedBytes, needsCaptures: Bool = true, _ body: (Match) -> Bool) {
         pool.withScratch { scratch in
             var position = 0
             var previousEnd = -1
@@ -22,7 +25,7 @@ extension Pattern {
                 var accept = true
                 if match.range.upperBound == position {
                     if match.range.lowerBound == previousEnd { accept = false }
-                    position += position < buffer.count ? Utf8.width(of: buffer, at: position) : 1
+                    position += position < buffer.count ? UTF8Scalar.width(buffer, at: position) : 1
                 } else {
                     position = match.range.upperBound
                 }
@@ -41,7 +44,7 @@ extension Pattern {
     /// inside a scalar, so the two differ only for an empty match inside one; such a match is dropped and the search resumes at the
     /// next byte, which is what the Pike VM would have done (at most three retries per scalar).
     func search(
-        _ scratch: inout SearchScratch, _ haystack: ByteBuffer, from start: Int, needsCaptures: Bool,
+        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool,
         allowDFA: inout Bool
     ) -> Match? {
         if let literals {
@@ -59,7 +62,7 @@ extension Pattern {
     /// The first strategy that applies decides: backwards from the end, between terminal bytes, or forwards. `.gaveUp` means a DFA's
     /// cache filled up (it is reset) or no DFA exists, so the Pike VM must answer.
     private func searchWithDFAs(
-        _ scratch: inout SearchScratch, _ haystack: ByteBuffer, from start: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
     ) -> SearchAttempt {
         if endAnchored, scratch.reverse != nil {
             scratch.counts.endAnchored += 1
@@ -76,7 +79,7 @@ extension Pattern {
 
     /// Every match ends at the end of the text, so the reverse DFA runs from there and finds the leftmost start.
     private func searchBackwards(
-        _ scratch: inout SearchScratch, _ haystack: ByteBuffer, from start: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
     ) -> SearchAttempt {
         var gaveUp = false
         let end = haystack.count
@@ -92,7 +95,7 @@ extension Pattern {
     /// Jumps between occurrences of the terminal byte (see ``TerminalByte``): the first one that ends a match ends the leftmost match,
     /// and its start is the farthest the reverse DFA reaches back, down to `start`.
     private func searchBetween(
-        _ byte: UInt8, _ scratch: inout SearchScratch, _ haystack: ByteBuffer, from start: Int, needsCaptures: Bool
+        _ byte: UInt8, _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
     ) -> SearchAttempt {
         var from = start
         while from < haystack.count {
@@ -117,7 +120,7 @@ extension Pattern {
 
     /// The forward DFA finds where the match ends, the reverse DFA where it starts.
     private func searchForwards(
-        _ scratch: inout SearchScratch, _ haystack: ByteBuffer, from start: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
     ) -> SearchAttempt {
         var from = start
         while from <= haystack.count {
@@ -145,19 +148,19 @@ extension Pattern {
 
     /// The match `start ..< end` the DFAs found, with its capture groups when asked for and the pattern has any.
     private func complete(
-        _ scratch: inout SearchScratch, _ haystack: ByteBuffer, start: Int, end: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, start: Int, end: Int, needsCaptures: Bool
     ) -> Match? {
         if program.captureCount == 0 || !needsCaptures { return Match(range: start ..< end) }
         return pike(&scratch, haystack, from: start, anchored: true, limit: end, needsCaptures: true)
     }
 
     /// The leftmost match of a pure literal alternation: the prefilter offers candidates and the alternatives are checked at each.
-    func literalSearch(_ literals: LiteralSet, _ haystack: ByteBuffer, from start: Int) -> Match? {
+    func literalSearch(_ literals: LiteralSet, _ haystack: CheckedBytes, from start: Int) -> Match? {
         unsafe literals.firstMatch(in: haystack.buffer, from: start, prefilter: prefilter).map { Match(range: $0) }
     }
 
     func pike(
-        _ scratch: inout SearchScratch, _ haystack: ByteBuffer, from start: Int, anchored: Bool, limit: Int?,
+        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, anchored: Bool, limit: Int?,
         needsCaptures: Bool
     ) -> Match? {
         scratch.counts.pike += 1

@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 extension BTParser {
     /// Parses the character escape at the backslash: a scalar (`\n`, `\x41`, `\u{1F600}`) or a set (`\d`, `\p{L}`).
     /// - Parameter inClass: Whether the escape is inside `[...]`, where `\b` is a backspace and `-` may be escaped.

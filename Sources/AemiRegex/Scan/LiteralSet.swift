@@ -1,10 +1,12 @@
+internal import AemiKernel
+
 /// A pattern that is only an alternation of fixed-length strings, each position a byte or a small set of bytes, in priority order.
 ///
 /// Such a pattern needs no automaton: at a position the prefilter offers, check the alternatives in order, and the first that fits is
 /// the match. That is exactly leftmost-first for fixed strings, since no alternative can backtrack into another.
 struct LiteralSet: Sendable {
     /// Every position of every alternative, alternative after alternative, in priority order.
-    private let positions: [ByteSet]
+    private let positions: [ByteBitmap]
     /// `positions[starts[k] ..< starts[k + 1]]` is alternative `k`; there is one more entry than there are alternatives.
     private let starts: [Int]
 
@@ -26,8 +28,8 @@ struct LiteralSet: Sendable {
     /// - Complexity: O(maxSteps).
     init?(_ program: Program) {
         guard program.captureCount == 0 else { return nil }
-        var found: [[ByteSet]] = []
-        var stack: [(pc: Int, path: [ByteSet])] = [(0, [])]
+        var found: [[ByteBitmap]] = []
+        var stack: [(pc: Int, path: [ByteBitmap])] = [(0, [])]
         var steps = 0
         while let (start, initial) = stack.popLast() {
             var pc = start
@@ -44,7 +46,7 @@ struct LiteralSet: Sendable {
                     case .save: pc += 1
                     case .assertion: return nil
                     case .byteRange:
-                        var bytes = ByteSet()
+                        var bytes = ByteBitmap()
                         bytes.insert(UInt8(instruction.x) ... UInt8(instruction.y))
                         path.append(bytes)
                         pc += 1

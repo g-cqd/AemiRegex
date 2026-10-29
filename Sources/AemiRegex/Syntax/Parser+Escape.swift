@@ -1,7 +1,9 @@
+internal import AemiUnicode
+
 extension Parser {
     enum Escape {
         case scalar(UInt32)
-        case set(ScalarSet)
+        case set(UnicodeScalarSet)
         case assertion(Assertion)
         /// `\Q`: the following scalars are literal up to `\E`.
         case quote
@@ -70,7 +72,7 @@ extension Parser {
     }
 
     /// `\pL`, `\p{Lu}` or `\p{^Lu}` after the `p` (or `P`): a general category, negated by `\P` and by `^` (twice cancels).
-    private mutating func category(negated: Bool, start: Int) throws(PatternError) -> ScalarSet {
+    private mutating func category(negated: Bool, start: Int) throws(PatternError) -> UnicodeScalarSet {
         guard let first = peek() else { throw .syntax(.unexpectedEnd, offset: start) }
         var negated = negated
         var name = ""
@@ -100,8 +102,8 @@ extension Parser {
 
     /// A named class under the current flags. With `(?i)` the class is case-folded first and negated after, as Go does, so that
     /// `(?i)\W` leaves out `ſ` and the Kelvin sign, which fold to word characters.
-    mutating func foldedThenNegated(_ positive: ScalarSet, negated: Bool) -> ScalarSet {
-        let base = flags.ignoreCase ? positive.folded() : positive
+    mutating func foldedThenNegated(_ positive: UnicodeScalarSet, negated: Bool) -> UnicodeScalarSet {
+        let base = flags.ignoreCase ? positive.simpleCaseClosure() : positive
         return negated ? base.negated() : base
     }
 

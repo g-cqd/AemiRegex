@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 extension BTParser {
     /// Parses an escape outside a class: an assertion, a back reference, a character, or a set.
     mutating func parseAtomEscape() throws(PatternError) {
@@ -154,9 +156,9 @@ extension BTParser {
 
     /// `\R`: `\r\n`, or one vertical space character, never giving back the `\n` of a `\r\n`.
     private mutating func newlineSequence() throws(PatternError) {
-        sets.append(CharSet(ScalarSet(0x0D)))
+        sets.append(CharSet(UnicodeScalarSet(0x0D)))
         let carriage = try newNode(.set(sets.count - 1))
-        sets.append(CharSet(ScalarSet(0x0A)))
+        sets.append(CharSet(UnicodeScalarSet(0x0A)))
         let feed = try newNode(.set(sets.count - 1))
         let pair = try newNode(.concatenation, children: [carriage, feed])
         sets.append(CharSet(BTSets.verticalSpace))

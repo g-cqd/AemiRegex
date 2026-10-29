@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 extension BTParser {
     /// Reads a class in `v` mode: operands (characters, ranges, escapes, `\q{…}` strings, nested classes) joined by union, `--` or `&&`.
     /// Classes nest on an explicit stack. A class that holds strings becomes an alternation, longest string first.
@@ -68,20 +70,20 @@ extension BTParser {
     /// - Returns: The operand, and whether it was a range.
     private mutating func setOperand() throws(PatternError) -> (BTStringSet, isRange: Bool) {
         let ignoreCase = flags.ignoreCase
-        func fold(_ set: ScalarSet) -> ScalarSet { ignoreCase ? set.folded() : set }
+        func fold(_ set: UnicodeScalarSet) -> UnicodeScalarSet { ignoreCase ? set.simpleCaseClosure() : set }
         if peek() == 0x5C, peek(1) == 0x71 { return (try quotedStrings(), false) }
         if peek() == 0x5C, let next = peek(1), "dDwWsSpP".unicodeScalars.contains(where: { $0.value == next }) {
             switch try parseCharacterEscape(inClass: true) {
                 case .set(let set), .fixedSet(let set): return (BTStringSet(scalars: fold(set)), false)
-                case .scalar(let scalar): return (BTStringSet(scalars: fold(ScalarSet(scalar))), false)
+                case .scalar(let scalar): return (BTStringSet(scalars: fold(UnicodeScalarSet(scalar))), false)
             }
         }
         let low = try setCharacter()
-        guard peek() == 0x2D, peek(1) != 0x2D else { return (BTStringSet(scalars: fold(ScalarSet(low))), false) }
+        guard peek() == 0x2D, peek(1) != 0x2D else { return (BTStringSet(scalars: fold(UnicodeScalarSet(low))), false) }
         position += 1
         let high = try setCharacter()
         guard low <= high else { throw .syntax(.invalidClassRange, offset: offset(position)) }
-        return (BTStringSet(scalars: fold(ScalarSet(normalizing: [low ... high]))), true)
+        return (BTStringSet(scalars: fold(UnicodeScalarSet(normalizing: [low ... high]))), true)
     }
 
     /// `\q{abc|d|}`: strings that the class matches, longest first.
@@ -103,7 +105,7 @@ extension BTParser {
                 current.append(try setCharacter())
             }
         }
-        return result.mappingScalars { flags.ignoreCase ? $0.folded() : $0 }
+        return result.mappingScalars { flags.ignoreCase ? $0.simpleCaseClosure() : $0 }
     }
 
     /// One scalar of a class in `v` mode. Syntax characters must be escaped, and so must the second of a doubled punctuator.
@@ -152,7 +154,8 @@ extension BTParser {
         for string in strings {
             var items: [Int] = []
             for scalar in string {
-                sets.append(CharSet(flags.ignoreCase ? ScalarSet(scalar).folded() : ScalarSet(scalar)))
+                sets.append(
+                    CharSet(flags.ignoreCase ? UnicodeScalarSet(scalar).simpleCaseClosure() : UnicodeScalarSet(scalar)))
                 items.append(try newNode(.set(sets.count - 1)))
             }
             branches.append(try newNode(.concatenation, children: items))

@@ -1,3 +1,5 @@
+internal import AemiUnicode
+
 extension Parser {
     /// Parses a bracketed class at the current position and emits it.
     mutating func parseClass() throws(PatternError) {
@@ -9,7 +11,7 @@ extension Parser {
             position += 1
         }
         var ranges: [ClosedRange<UInt32>] = []
-        var named = ScalarSet()
+        var named = UnicodeScalarSet()
         var first = true
         while true {
             guard let c = peek() else { throw .syntax(.unterminatedClass, offset: open) }
@@ -30,14 +32,14 @@ extension Parser {
                     ranges.append(low ... (try parseRangeEnd(after: low, itemOffset: itemOffset)))
             }
         }
-        var set = ScalarSet(normalizing: ranges).union(named)
-        if flags.ignoreCase { set = set.folded() }
+        var set = UnicodeScalarSet(normalizing: ranges).union(named)
+        if flags.ignoreCase { set = set.simpleCaseClosure() }
         try emitSet(negated ? set.negated() : set)
     }
 
     private enum ClassItem {
         case scalar(UInt32)
-        case set(ScalarSet)
+        case set(UnicodeScalarSet)
     }
 
     private mutating func parseClassItem() throws(PatternError) -> ClassItem {
@@ -64,7 +66,7 @@ extension Parser {
     }
 
     /// `[:name:]` or `[:^name:]` at the current position. Returns `nil`, consuming nothing, when no closing `:]` follows.
-    private mutating func parsePosixClass() throws(PatternError) -> ScalarSet? {
+    private mutating func parsePosixClass() throws(PatternError) -> UnicodeScalarSet? {
         var end = position + 2
         while end + 1 < scalars.count, !(scalars[end] == 0x3A && scalars[end + 1] == 0x5D) { end += 1 }
         guard end + 1 < scalars.count else { return nil }

@@ -16,14 +16,12 @@ let strictSettings: [SwiftSetting] = [
 // The engine reads attacker-controlled bytes, so every unsafe construct in it must be marked `unsafe`.
 let kernelSettings: [SwiftSetting] = strictSettings + [.strictMemorySafety()]
 
-// Dev tooling is gated behind AEMIREGEX_DEV, as in the sibling packages, so consumers never resolve it. The Aemi package
-// supplies the shared `format` / `lint` plugins that the shared CI workflow runs. Pinned to one revision, like AemiJSON.
-let isDev = Context.environment["AEMIREGEX_DEV"] != nil
-var packageDependencies: [Package.Dependency] = []
-if isDev {
-    packageDependencies.append(
-        .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "f6da05cd0efdf60700e854efb5b6092eae89b8c5"))
-}
+// Aemi supplies the byte kernels, UTF-8 reading, the Unicode tables and the scratch pool (ADR-0013), and the shared `format` / `lint`
+// plugins the shared CI workflow runs. Pinned to one revision, like every Aemi-family package: AemiJSON, AemiMarkdown and TerminalKit pin
+// the same one, since SwiftPM resolves one revision per package in a graph.
+let packageDependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "d5668403fa19a2469e9718eee5f28e2815d73956")
+]
 
 let package = Package(
     name: "AemiRegex",
@@ -34,11 +32,15 @@ let package = Package(
     ],
     dependencies: packageDependencies,
     targets: [
-        // The multi-literal prefilter kernel: NEON `tbl` and SSSE3 `pshufb` nibble lookups, which Swift SIMD cannot express. A probe
-        // measured 3.3 to 6.1x over the best Swift version at 100 MB on arm64 (docs/research/neon-assembly-2026-10.md).
-        .target(name: "CAemiRegex"),
-        // No package dependencies and no Foundation: a pattern is parsed, compiled and matched over UTF-8 bytes.
-        .target(name: "AemiRegex", dependencies: ["CAemiRegex"], swiftSettings: kernelSettings),
+        // No Foundation: a pattern is parsed, compiled and matched over UTF-8 bytes. The multi-literal kernel, the byte scans and the
+        // Unicode data are Aemi's (ADR-0013).
+        .target(
+            name: "AemiRegex",
+            dependencies: [
+                .product(name: "AemiKernels", package: "aemi"), .product(name: "AemiKernel", package: "aemi"),
+                .product(name: "AemiUnicode", package: "aemi"), .product(name: "AemiRuntime", package: "aemi")
+            ],
+            swiftSettings: kernelSettings),
         .testTarget(
             name: "AemiRegexTests",
             dependencies: ["AemiRegex"],

@@ -1,3 +1,5 @@
+internal import AemiKernel
+
 /// Walks the instructions reachable from a program counter without consuming input, in priority order. The DFA uses it to build and
 /// resolve states, and the literal analysis uses it to find what a match can start with.
 struct EpsilonWalker {

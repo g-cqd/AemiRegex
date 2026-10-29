@@ -1,3 +1,5 @@
+internal import AemiKernel
+
 /// Epsilon-closure queries on a program, for analysis: what can consume the first byte, and which literal every match starts with.
 struct Closure {
     struct Result {
@@ -29,7 +31,7 @@ struct Closure {
     }
 
     /// Adds every byte the consumer at `pc` accepts.
-    func add(_ pc: Int, to set: inout ByteSet) {
+    func add(_ pc: Int, to set: inout ByteBitmap) {
         let instruction = program.instructions[pc]
         switch instruction.op {
             case .byteRange: set.insert(UInt8(instruction.x) ... UInt8(instruction.y))
@@ -61,11 +63,11 @@ struct Closure {
         guard !first.reachesMatch, first.pcs.count <= limit else { return nil }
         var pairs = Set<BytePair>()
         for firstPC in first.pcs {
-            var firstBytes = ByteSet()
+            var firstBytes = ByteBitmap()
             add(firstPC, to: &firstBytes)
             let following = consumers(from: firstPC + 1)
             guard !following.reachesMatch else { return nil }
-            var secondBytes = ByteSet()
+            var secondBytes = ByteBitmap()
             for secondPC in following.pcs { add(secondPC, to: &secondBytes) }
             for a in firstBytes.members {
                 for b in secondBytes.members {
