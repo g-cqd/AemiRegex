@@ -20,7 +20,7 @@ let kernelSettings: [SwiftSetting] = strictSettings + [.strictMemorySafety()]
 // plugins the shared CI workflow runs. Pinned to one revision, like every Aemi-family package: AemiJSON, AemiMarkdown and TerminalKit pin
 // the same one, since SwiftPM resolves one revision per package in a graph.
 let packageDependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "d5668403fa19a2469e9718eee5f28e2815d73956")
+    .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "04e49d108e43a94fac449f344bfca9eabc5be0e9")
 ]
 
 let package = Package(
