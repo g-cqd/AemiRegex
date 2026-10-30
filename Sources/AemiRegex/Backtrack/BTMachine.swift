@@ -13,6 +13,8 @@ struct BTMachine {
     var steps = 0
     /// A match that is empty and sits here is refused, so the search goes on (PCRE2's `NOTEMPTY_ATSTART`).
     var forbiddenEmpty: Int?
+    /// Where a match must end, for a whole match: reaching the end of the pattern anywhere else fails and backtracks.
+    var requiredEnd: Int?
     /// The subroutine calls made so far in this run, and the innermost one still open (-1 when none).
     var callFrames: [BTCallFrame] = []
     var currentFrame = -1
@@ -46,6 +48,14 @@ struct BTMachine {
             begin += UTF8Scalar.step(bytes, at: begin)
         }
         return nil
+    }
+
+    /// The highest-priority match that starts at 0 and ends at the end of `bytes`.
+    /// - Throws: ``BacktrackError`` when a budget runs out.
+    mutating func wholeMatch(in bytes: CheckedBytes) throws(BacktrackError) -> Match? {
+        requiredEnd = bytes.count
+        defer { requiredEnd = nil }
+        return try run(in: bytes, from: 0) ? match() : nil
     }
 
     private func match() -> Match {
@@ -140,6 +150,8 @@ struct BTMachine {
                 if let back = try returnFromCall(group: 0) {
                     pc = back
                 } else if let forbidden = forbiddenEmpty, pos == forbidden, slots[0] == pos {
+                    ok = false
+                } else if let end = requiredEnd, pos != end {
                     ok = false
                 } else {
                     slots[1] = pos

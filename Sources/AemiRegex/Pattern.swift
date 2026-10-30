@@ -20,6 +20,8 @@ public struct Pattern: Sendable {
     let jumpsToTerminalByte: Bool
     let plan: DFAPlan?
     let pool: ScratchPool<SearchScratch>
+    /// The whole-string program ``wholeMatch(in:)`` runs, or `nil` when this pattern was compiled whole-string and is its own.
+    let wholeStringTwin: WholeStringTwin?
 
     /// Compiles `pattern`.
     /// - Throws: ``PatternError`` for malformed syntax, an unsupported construct, or a pattern over a limit.
@@ -44,6 +46,7 @@ public struct Pattern: Sendable {
             compiledText, program, limits: limits, engine: engine, wholeString: wholeString)
         self.program = program
         self.plan = plan
+        wholeStringTwin = wholeString ? nil : WholeStringTwin(source: compiledText, limits: limits, engine: engine)
         endAnchored = plan != nil && DFAPlan.isEndAnchored(program)
         let prefilter = plan == nil ? Prefilter(.none) : Prefilter(analyzing: program)
         self.prefilter = prefilter

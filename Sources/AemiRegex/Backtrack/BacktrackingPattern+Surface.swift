@@ -1,20 +1,19 @@
 // @dl:disable exact-clone -- parallel surface across Pattern and BacktrackingPattern
 /// Convenient search, replacement and splitting operations on any `StringProtocol`.
 extension BacktrackingPattern {
-    /// Matches `text` only if the match starts at the beginning of `text` and spans the entire length.
+    /// The highest-priority match that spans all of `text`, as Swift `Regex.wholeMatch` defines it.
+    ///
+    /// The search starts only at the beginning, and a path that reaches the end of the pattern anywhere else backtracks into the next
+    /// alternative, so `a|ab` matches all of `ab`.
     public func wholeMatch<S: StringProtocol>(in text: S) throws(BacktrackError) -> Match? {
-        guard let match = try firstMatch(in: text, from: text.startIndex),
-            match.range.lowerBound == 0 && match.range.upperBound == text.utf8.count
-        else { return nil }
-        return match
+        try search(in: text) { machine, bytes throws(BacktrackError) in try machine.wholeMatch(in: bytes) }
     }
 
-    /// Matches `text` only if the match starts at the beginning of `text`.
+    /// The highest-priority match that starts at the beginning of `text`; only that start is tried.
     public func prefixMatch<S: StringProtocol>(in text: S) throws(BacktrackError) -> Match? {
-        guard let match = try firstMatch(in: text, from: text.startIndex),
-            match.range.lowerBound == 0
-        else { return nil }
-        return match
+        try search(in: text) { machine, bytes throws(BacktrackError) in
+            try machine.firstMatch(in: bytes, from: 0, anchored: true)
+        }
     }
 
     /// Returns a new string with the first non-overlapping match replaced with `replacement`.
