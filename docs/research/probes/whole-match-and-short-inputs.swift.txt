@@ -1,0 +1,50 @@
+import AemiRegex
+import Foundation
+
+// Whole-name matching as swift-search and deadwood use it: one compiled pattern, many short identifiers.
+let p1 = try Pattern("a|ab")
+print("wholeMatch a|ab on ab:", p1.wholeMatch(in: "ab") as Any)
+let p1w = try Pattern("a|ab", syntax: .re2, matching: .wholeString)
+print("wholeString a|ab on ab:", p1w.isMatch(in: "ab"), p1w.firstMatch(in: "ab") as Any)
+let p2 = try Pattern("(?:a|ab)(?:c|bcd)")
+print("wholeMatch (a|ab)(c|bcd) on abcd:", p2.wholeMatch(in: "abcd") as Any)
+print("prefixMatch a|ab on abx:", p1.prefixMatch(in: "abx") as Any)
+
+var names: [String] = []
+var s: UInt64 = 1
+let parts = ["load", "fetch", "Client", "shared", "decode", "make", "View", "Model", "with", "Value", "for", "index"]
+for _ in 0 ..< 200_000 {
+    var n = ""
+    for _ in 0 ..< 3 {
+        s = s &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+        n += parts[Int(s >> 33) % parts.count]
+    }
+    names.append(n)
+}
+let clock = ContinuousClock()
+@MainActor func time(_ label: String, _ body: () -> Int) {
+    _ = body()
+    var best = Duration.seconds(100)
+    var r = 0
+    for _ in 0 ..< 5 {
+        let t = clock.measure { r = body() }
+        best = min(best, t)
+    }
+    print(label, best / names.count, "per name;", r)
+}
+let anchored = try Pattern("^(?:load.*)$")
+let whole = try Pattern("load.*", syntax: .re2, matching: .wholeString)
+let unanch = try Pattern("load.*")
+let swiftRegex = try Regex("load.*")
+time("anchored ^(?:…)$ isMatch") { names.reduce(0) { $0 + (anchored.isMatch(in: $1) ? 1 : 0) } }
+time(".wholeString isMatch     ") { names.reduce(0) { $0 + (whole.isMatch(in: $1) ? 1 : 0) } }
+time("wholeMatch(in:)          ") { names.reduce(0) { $0 + (unanch.wholeMatch(in: $1) != nil ? 1 : 0) } }
+time("Swift Regex wholeMatch   ") { names.reduce(0) { $0 + ((try? swiftRegex.wholeMatch(in: $1)) != nil ? 1 : 0) } }
+time("hasPrefix (floor)        ") { names.reduce(0) { $0 + ($1.hasPrefix("load") ? 1 : 0) } }
+let mid = try Pattern("^(?:.*Value.*)$")
+time("anchored .*Value.*       ") { names.reduce(0) { $0 + (mid.isMatch(in: $1) ? 1 : 0) } }
+time("compile 1000 patterns    ") {
+    var c = 0
+    for i in 0 ..< 1000 { c += (try? Pattern("^(?:load\(i).*)$"))?.captureCount ?? 0 }
+    return c
+}
