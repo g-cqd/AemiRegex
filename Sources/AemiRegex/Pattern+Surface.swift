@@ -1,11 +1,13 @@
 /// Convenient search, replacement and splitting operations on any `StringProtocol`.
 extension Pattern {
-    /// Matches `text` only if the match starts at the beginning of `text` and spans the entire length.
+    /// The highest-priority match that spans all of `text`, as Swift `Regex.wholeMatch` and RE2's `FullMatch` define it.
+    ///
+    /// This is not the leftmost-first match kept when it happens to span: `a|ab` matches all of `ab`. The first call compiles a
+    /// whole-string program from the same source, shared by copies of the pattern; a pattern compiled with
+    /// ``Matching/wholeString`` already is one.
     public func wholeMatch<S: StringProtocol>(in text: S) -> Match? {
-        guard let match = firstMatch(in: text, from: text.startIndex),
-            match.range.lowerBound == 0 && match.range.upperBound == text.utf8.count
-        else { return nil }
-        return match
+        guard let twin = wholeStringTwin else { return firstMatch(in: text) }
+        return twin.wholeMatch(in: text, searching: self)
     }
 
     /// Matches `text` only if the match starts at the beginning of `text`.
