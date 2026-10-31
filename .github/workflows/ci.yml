@@ -26,7 +26,7 @@ env:
 
 jobs:
   quality:
-    uses: Aemi-Studio/aemi/.github/workflows/swift-quality.yml@f6da05cd0efdf60700e854efb5b6092eae89b8c5 # aemi f6da05c
+    uses: Aemi-Studio/aemi/.github/workflows/swift-quality.yml@1580771faf9133ef8c72d0dc290b1d236678177d # aemi 1580771
     with:
       enable-static-analysis: false
       dev-env-var: AEMIREGEX_DEV
