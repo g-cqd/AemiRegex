@@ -80,7 +80,9 @@ extension PatternCursor {
     /// - Returns: The name and the index of `close`.
     /// - Throws: ``PatternError`` with `.invalidGroupName` when the name is empty, has a scalar that is not allowed, or is unterminated.
     func name(
-        from start: Int, until close: UInt32, allowing allowed: (UInt32, Bool) -> Bool
+        from start: Int,
+        until close: UInt32,
+        allowing allowed: (UInt32, Bool) -> Bool
     ) throws(PatternError) -> (name: String, end: Int) {
         var end = start
         while end < scalars.count, scalars[end] != close {
@@ -123,7 +125,10 @@ extension PatternCursor {
     /// - Returns: The index of the closer, the closer, and whether any flag letter was seen.
     /// - Throws: ``PatternError`` with `.invalidFlag` for an unknown letter, a second `-`, or a rejected empty negation.
     func scanFlags(
-        from start: Int, closers: [UInt32], allowEmptyNegation: Bool = false, apply: (UInt32, Bool) -> Bool
+        from start: Int,
+        closers: [UInt32],
+        allowEmptyNegation: Bool = false,
+        apply: (UInt32, Bool) -> Bool
     ) throws(PatternError) -> (end: Int, closer: UInt32, sawFlag: Bool) {
         var negating = false
         var sawFlag = false

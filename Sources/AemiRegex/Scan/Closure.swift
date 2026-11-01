@@ -25,7 +25,12 @@ struct Closure {
         walker.reset()
         var list: [Int32] = []
         let reachesMatch = walker.walk(
-            from: start, in: program.instructions, policy: .pass, cutAtMatch: false, into: &list)
+            from: start,
+            in: program.instructions,
+            policy: .pass,
+            cutAtMatch: false,
+            into: &list
+        )
         let consumers = list.map(Int.init).filter { program.instructions[$0].op != .match }
         return Result(pcs: consumers, reachesMatch: reachesMatch)
     }

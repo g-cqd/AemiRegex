@@ -155,7 +155,8 @@ extension BTParser {
             var items: [Int] = []
             for scalar in string {
                 sets.append(
-                    CharSet(flags.ignoreCase ? UnicodeScalarSet(scalar).simpleCaseClosure() : UnicodeScalarSet(scalar)))
+                    CharSet(flags.ignoreCase ? UnicodeScalarSet(scalar).simpleCaseClosure() : UnicodeScalarSet(scalar))
+                )
                 items.append(try newNode(.set(sets.count - 1)))
             }
             branches.append(try newNode(.concatenation, children: items))

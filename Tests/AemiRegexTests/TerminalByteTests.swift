@@ -20,7 +20,8 @@ struct TerminalByteTests {
 
     @Test(arguments: terminals)
     func `a pattern ending in a byte that nothing else consumes has it as its terminal byte`(
-        source: String, byte: UInt8
+        source: String,
+        byte: UInt8
     ) throws {
         #expect(try Pattern(source).terminalByte == byte)
     }
@@ -49,7 +50,8 @@ struct TerminalByteTests {
             for start in bytes.indices where PikeVM.isBoundary(array: bytes, start) {
                 #expect(
                     fast.firstMatch(in: bytes, from: start) == reference.firstMatch(in: bytes, from: start),
-                    "/\(source)/ on \(text.debugDescription) from \(start)")
+                    "/\(source)/ on \(text.debugDescription) from \(start)"
+                )
             }
         }
     }
@@ -79,6 +81,7 @@ struct TerminalByteTests {
         let boundary = try Pattern(#"\bc;"#)
         #expect(
             boundary.firstMatch(in: text, from: 2) == nil,
-            "c is not at a word boundary, and the text before `from` shows it")
+            "c is not at a word boundary, and the text before `from` shows it"
+        )
     }
 }

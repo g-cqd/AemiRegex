@@ -23,7 +23,8 @@ struct ClassCompiler {
             let clipped = range.clamped(to: 0x80 ... UnicodeScalarSet.maxScalar)
             for sequence in UTF8RangeSequences.sequences(clipped) {
                 branches.append(
-                    (reversed ? sequence.reversed() : sequence).map { .byteRange($0.lowerBound, $0.upperBound) })
+                    (reversed ? sequence.reversed() : sequence).map { .byteRange($0.lowerBound, $0.upperBound) }
+                )
             }
         }
         if branches.isEmpty { return [.byteSet(intern(ByteBitmap()))] }

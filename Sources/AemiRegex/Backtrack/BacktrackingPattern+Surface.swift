@@ -18,21 +18,24 @@ extension BacktrackingPattern {
 
     /// Returns a new string with the first non-overlapping match replaced with `replacement`.
     public func replacingFirstMatch<S: StringProtocol>(
-        in text: S, with replacement: String
+        in text: S,
+        with replacement: String
     ) throws(BacktrackError) -> String {
         try replacingFirstMatch(in: text) { _ in replacement }
     }
 
     /// Returns a new string with every non-overlapping match replaced with `replacement`.
     public func replacingMatches<S: StringProtocol>(
-        in text: S, with replacement: String
+        in text: S,
+        with replacement: String
     ) throws(BacktrackError) -> String {
         try replacingMatches(in: text) { _ in replacement }
     }
 
     /// Returns a new string with the first match replaced with the string returned by `transform`.
     public func replacingFirstMatch<S: StringProtocol>(
-        in text: S, using transform: (Match) throws(BacktrackError) -> String
+        in text: S,
+        using transform: (Match) throws(BacktrackError) -> String
     ) throws(BacktrackError) -> String {
         guard let match = try firstMatch(in: text) else { return String(text) }
         let matchRange = match.range(in: text)
@@ -46,7 +49,8 @@ extension BacktrackingPattern {
 
     /// Returns a new string with every non-overlapping match replaced with the string returned by `transform`.
     public func replacingMatches<S: StringProtocol>(
-        in text: S, using transform: (Match) throws(BacktrackError) -> String
+        in text: S,
+        using transform: (Match) throws(BacktrackError) -> String
     ) throws(BacktrackError) -> String {
         let all = try matches(in: text)
         guard !all.isEmpty else { return String(text) }
@@ -69,7 +73,9 @@ extension BacktrackingPattern {
 
     /// Splits `text` around matches of this pattern.
     public func split<S: StringProtocol>(
-        in text: S, maxSplits: Int = Int.max, omittingEmptySubsequences: Bool = false
+        in text: S,
+        maxSplits: Int = Int.max,
+        omittingEmptySubsequences: Bool = false
     ) throws(BacktrackError) -> [Substring] {
         guard maxSplits >= 0 else { return [Substring(text[...])] }
         let all = try matches(in: text)

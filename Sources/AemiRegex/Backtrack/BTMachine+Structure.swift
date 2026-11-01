@@ -1,7 +1,9 @@
 extension BTMachine {
     /// Runs the instructions that open and close structure: calls, conditions, look-arounds and atomic groups.
     mutating func executeStructure(
-        _ instruction: BTInstruction, pc: inout Int, pos: inout Int
+        _ instruction: BTInstruction,
+        pc: inout Int,
+        pos: inout Int
     ) throws(BacktrackError) -> Step {
         var ok = true
         switch instruction.op {

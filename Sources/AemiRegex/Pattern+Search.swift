@@ -20,7 +20,12 @@ extension Pattern {
             var allowDFA = true
             while position <= buffer.count,
                 let match = search(
-                    &scratch, buffer, from: position, needsCaptures: needsCaptures, allowDFA: &allowDFA)
+                    &scratch,
+                    buffer,
+                    from: position,
+                    needsCaptures: needsCaptures,
+                    allowDFA: &allowDFA
+                )
             {
                 var accept = true
                 if match.range.upperBound == position {
@@ -44,7 +49,10 @@ extension Pattern {
     /// inside a scalar, so the two differ only for an empty match inside one; such a match is dropped and the search resumes at the
     /// next byte, which is what the Pike VM would have done (at most three retries per scalar).
     func search(
-        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool,
+        _ scratch: inout SearchScratch,
+        _ haystack: CheckedBytes,
+        from start: Int,
+        needsCaptures: Bool,
         allowDFA: inout Bool
     ) -> Match? {
         if let literals {
@@ -62,7 +70,10 @@ extension Pattern {
     /// The first strategy that applies decides: backwards from the end, between terminal bytes, or forwards. `.gaveUp` means a DFA's
     /// cache filled up (it is reset) or no DFA exists, so the Pike VM must answer.
     private func searchWithDFAs(
-        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch,
+        _ haystack: CheckedBytes,
+        from start: Int,
+        needsCaptures: Bool
     ) -> SearchAttempt {
         if endAnchored, scratch.reverse != nil {
             scratch.counts.endAnchored += 1
@@ -79,7 +90,10 @@ extension Pattern {
 
     /// Every match ends at the end of the text, so the reverse DFA runs from there and finds the leftmost start.
     private func searchBackwards(
-        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch,
+        _ haystack: CheckedBytes,
+        from start: Int,
+        needsCaptures: Bool
     ) -> SearchAttempt {
         var gaveUp = false
         let end = haystack.count
@@ -95,7 +109,11 @@ extension Pattern {
     /// Jumps between occurrences of the terminal byte (see ``TerminalByte``): the first one that ends a match ends the leftmost match,
     /// and its start is the farthest the reverse DFA reaches back, down to `start`.
     private func searchBetween(
-        _ byte: UInt8, _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
+        _ byte: UInt8,
+        _ scratch: inout SearchScratch,
+        _ haystack: CheckedBytes,
+        from start: Int,
+        needsCaptures: Bool
     ) -> SearchAttempt {
         var from = start
         while from < haystack.count {
@@ -111,7 +129,8 @@ extension Pattern {
             }
             if let matchStart = begin ?? nil {
                 return .answer(
-                    complete(&scratch, haystack, start: matchStart, end: found + 1, needsCaptures: needsCaptures))
+                    complete(&scratch, haystack, start: matchStart, end: found + 1, needsCaptures: needsCaptures)
+                )
             }
             from = found + 1
         }
@@ -120,7 +139,10 @@ extension Pattern {
 
     /// The forward DFA finds where the match ends, the reverse DFA where it starts.
     private func searchForwards(
-        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch,
+        _ haystack: CheckedBytes,
+        from start: Int,
+        needsCaptures: Bool
     ) -> SearchAttempt {
         var from = start
         while from <= haystack.count {
@@ -148,7 +170,11 @@ extension Pattern {
 
     /// The match `start ..< end` the DFAs found, with its capture groups when asked for and the pattern has any.
     private func complete(
-        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, start: Int, end: Int, needsCaptures: Bool
+        _ scratch: inout SearchScratch,
+        _ haystack: CheckedBytes,
+        start: Int,
+        end: Int,
+        needsCaptures: Bool
     ) -> Match? {
         if program.captureCount == 0 || !needsCaptures { return Match(range: start ..< end) }
         return pike(&scratch, haystack, from: start, anchored: true, limit: end, needsCaptures: true)
@@ -160,7 +186,11 @@ extension Pattern {
     }
 
     func pike(
-        _ scratch: inout SearchScratch, _ haystack: CheckedBytes, from start: Int, anchored: Bool, limit: Int?,
+        _ scratch: inout SearchScratch,
+        _ haystack: CheckedBytes,
+        from start: Int,
+        anchored: Bool,
+        limit: Int?,
         needsCaptures: Bool
     ) -> Match? {
         scratch.counts.pike += 1

@@ -20,20 +20,24 @@ enum SourceStructure {
             let (types, extensions) = declarations(in: file.text)
             if types.count > 1 {
                 problems.append(
-                    "\(file.name): declares \(types.count) top-level types (\(types.joined(separator: ", ")))")
+                    "\(file.name): declares \(types.count) top-level types (\(types.joined(separator: ", ")))"
+                )
             } else if let type = types.first, type != owner {
                 problems.append(
-                    "\(file.name): declares \(type), so the file should be named \(type).swift or \(type)+….swift")
+                    "\(file.name): declares \(type), so the file should be named \(type).swift or \(type)+….swift"
+                )
             } else if types.isEmpty, let first = extensions.first {
                 if Set(extensions).count > 1 {
                     problems.append(
-                        "\(file.name): extends several types (\(Set(extensions).sorted().joined(separator: ", ")))")
+                        "\(file.name): extends several types (\(Set(extensions).sorted().joined(separator: ", ")))"
+                    )
                 } else {
                     // `extension Outer.Inner` lives in `Outer+Inner.swift` or `Outer+Inner+Feature.swift`.
                     let expected = first.replacingOccurrences(of: ".", with: "+")
                     if stem != expected, !stem.hasPrefix(expected + "+") {
                         problems.append(
-                            "\(file.name): extends \(first), so the file should be named \(expected)+….swift")
+                            "\(file.name): extends \(first), so the file should be named \(expected)+….swift"
+                        )
                     }
                 }
             }

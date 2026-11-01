@@ -13,7 +13,8 @@ struct LiteralMatcherTests {
         ("[a-z]x", false), ("a{2,3}", true), ("a+", false)
     ])
     func `only an alternation of short fixed strings with no captures uses the literal matcher`(
-        source: String, eligible: Bool
+        source: String,
+        eligible: Bool
     ) throws {
         #expect(try Pattern(source).usesLiteralMatcher == eligible)
     }
@@ -24,7 +25,8 @@ struct LiteralMatcherTests {
         #expect(!pattern.usesLiteralMatcher)
         #expect(
             pattern.firstMatch(in: Array("xx word57 yy".utf8))?.range == 3 ..< 8,
-            "word5 is an earlier alternative than word57")
+            "word5 is an earlier alternative than word57"
+        )
     }
 
     struct Case: Sendable, CustomTestStringConvertible {

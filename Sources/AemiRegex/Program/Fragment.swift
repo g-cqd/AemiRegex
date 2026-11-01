@@ -20,7 +20,11 @@ enum Fragment {
 
     /// The code for `atom{min,max}`. `max == nil` means no upper bound. `nullable` says the atom can match the empty string.
     static func repetition(
-        of atom: [Instruction], min: Int, max: Int?, greedy: Bool, nullable: Bool
+        of atom: [Instruction],
+        min: Int,
+        max: Int?,
+        greedy: Bool,
+        nullable: Bool
     ) -> [Instruction] {
         let length = atom.count
         func choose(_ enter: Int, _ skip: Int) -> Instruction { greedy ? .split(enter, skip) : .split(skip, enter) }

@@ -20,7 +20,8 @@ struct MalformedInputTests {
         var result: [[UInt8]] = []
         for _ in 0 ..< 30 {
             result.append(
-                (0 ..< Int.random(in: 0 ... 300, using: &rng)).map { _ in UInt8.random(in: 0 ... 255, using: &rng) })
+                (0 ..< Int.random(in: 0 ... 300, using: &rng)).map { _ in UInt8.random(in: 0 ... 255, using: &rng) }
+            )
         }
         for _ in 0 ..< 30 {
             var bytes: [UInt8] = []
@@ -47,10 +48,13 @@ struct MalformedInputTests {
             let actual = fast.matches(in: bytes)
             #expect(
                 actual == reference.matches(in: bytes),
-                "/\(golden.pattern)/ on \(bytes.count) bytes \(bytes.prefix(24))")
+                "/\(golden.pattern)/ on \(bytes.count) bytes \(bytes.prefix(24))"
+            )
             for match in actual {
                 #expect(
-                    match.range.lowerBound >= 0 && match.range.upperBound <= bytes.count, "match outside the haystack")
+                    match.range.lowerBound >= 0 && match.range.upperBound <= bytes.count,
+                    "match outside the haystack"
+                )
             }
         }
     }

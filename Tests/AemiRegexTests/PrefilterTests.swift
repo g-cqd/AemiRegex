@@ -16,10 +16,12 @@ struct PrefilterTests {
         Case(pattern: "Q[0-9]+Z", kind: .byte(0x51)),
         Case(
             pattern: "import|struct|enum",
-            kind: .pairs([BytePair(0x65, 0x6E), BytePair(0x69, 0x6D), BytePair(0x73, 0x74)])),
+            kind: .pairs([BytePair(0x65, 0x6E), BytePair(0x69, 0x6D), BytePair(0x73, 0x74)])
+        ),
         Case(
             pattern: "(?i)todo",
-            kind: .pairs([BytePair(0x54, 0x4F), BytePair(0x54, 0x6F), BytePair(0x74, 0x4F), BytePair(0x74, 0x6F)])),
+            kind: .pairs([BytePair(0x54, 0x4F), BytePair(0x54, 0x6F), BytePair(0x74, 0x4F), BytePair(0x74, 0x6F)])
+        ),
         Case(pattern: "é", kind: .pair(0xC3, 0xA9)),
         Case(pattern: "[0-9]+x", kind: .none),
         Case(pattern: "a*", kind: .none),

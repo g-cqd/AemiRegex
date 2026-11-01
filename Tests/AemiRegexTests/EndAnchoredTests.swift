@@ -14,7 +14,8 @@ struct EndAnchoredTests {
         ("\\Aabc", false), ("a(?:$|b)", false), ("(a|b$)c", false)
     ])
     func `a pattern is end-anchored only when every path to a match crosses the end-of-text assertion`(
-        source: String, anchored: Bool
+        source: String,
+        anchored: Bool
     ) throws {
         #expect(try Pattern(source).endAnchored == anchored)
     }
@@ -36,7 +37,9 @@ struct EndAnchoredTests {
         #expect(fast.firstMatch(in: bytes) == reference.firstMatch(in: bytes))
         for from in 0 ... bytes.count {
             #expect(
-                fast.firstMatch(in: bytes, from: from) == reference.firstMatch(in: bytes, from: from), "from \(from)")
+                fast.firstMatch(in: bytes, from: from) == reference.firstMatch(in: bytes, from: from),
+                "from \(from)"
+            )
         }
     }
 

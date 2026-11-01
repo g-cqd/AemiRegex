@@ -80,7 +80,8 @@ enum DocumentationLayout {
                     }
                     if !successorFields["supersedes", default: ""].contains("ADR-\(number)") {
                         problems.append(
-                            "\(record.name): superseded by \(successor), which does not name it in `supersedes:`")
+                            "\(record.name): superseded by \(successor), which does not name it in `supersedes:`"
+                        )
                     }
                 case let other:
                     problems.append("\(record.name): status is \(other ?? "missing"), not accepted or superseded")
@@ -108,7 +109,8 @@ enum DocumentationLayout {
             guard let number = number(of: entry.name), let fields = fieldsByNumber[number] else { continue }
             guard let status = fields["status"], roadmapStatuses.contains(status) else {
                 problems.append(
-                    "\(entry.name): status is \(fields["status"] ?? "missing"), not not-started, in-progress or done")
+                    "\(entry.name): status is \(fields["status"] ?? "missing"), not not-started, in-progress or done"
+                )
                 continue
             }
             for blocker in numbers(in: fields["blocked-by", default: ""]) {

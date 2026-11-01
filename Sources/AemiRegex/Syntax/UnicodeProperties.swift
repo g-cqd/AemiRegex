@@ -55,7 +55,8 @@ enum UnicodeProperties {
 
     /// The category aliases keyed by canonical name: `Uppercase_Letter` is found as `Uppercaseletter`.
     private static let aliases: [String: String] = Dictionary(
-        uniqueKeysWithValues: UnicodeData.generalCategoryAliases.map { (canonicalName($0.key), $0.value) })
+        uniqueKeysWithValues: UnicodeData.generalCategoryAliases.map { (canonicalName($0.key), $0.value) }
+    )
 
     /// The category with this code: a two-letter one (`Lu`), a one-letter group (`L`), `Cn`, or `LC` (cased letters). PCRE2 reads these.
     /// - Returns: The set, or `nil` when `code` is none of them (a long name is not a code).

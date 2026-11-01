@@ -27,7 +27,8 @@ struct DocumentationLayoutTests {
         #expect(entries.count >= 1)
         #expect(
             DocumentationLayout.roadmapProblems(in: entries).isEmpty,
-            "\(DocumentationLayout.roadmapProblems(in: entries))")
+            "\(DocumentationLayout.roadmapProblems(in: entries))"
+        )
     }
 
     @Test func `the diary is named and sized as the law says`() {
@@ -56,7 +57,8 @@ struct DocumentationLayoutTests {
             DocumentationLayout.adrProblems(in: [
                 Self.record("0001-a.md", "status: accepted"), Self.record("0001-b.md", "status: accepted")
             ])
-            .count == 1)
+            .count == 1
+        )
     }
 
     @Test func `a roadmap entry needs a known status and blockers that exist and are not done`() {
@@ -67,15 +69,18 @@ struct DocumentationLayoutTests {
             DocumentationLayout.roadmapProblems(in: [
                 entry("0001", "in-progress"), entry("0002", "not-started", #"["0001"]"#)
             ])
-            .isEmpty)
+            .isEmpty
+        )
         #expect(DocumentationLayout.roadmapProblems(in: [entry("0001", "finished")]).count == 1)
         #expect(DocumentationLayout.roadmapProblems(in: [entry("0001", "not-started", #"["0009"]"#)]).count == 1)
         #expect(
             DocumentationLayout.roadmapProblems(in: [entry("0001", "done"), entry("0002", "not-started", #"["0001"]"#)])
-                .count == 1)
+                .count == 1
+        )
         #expect(
             DocumentationLayout.roadmapProblems(in: [entry("0001", "in-progress"), entry("0002", "done", #"["0001"]"#)])
-                .isEmpty)
+                .isEmpty
+        )
     }
 
     @Test func `a diary file must be named by date and stay within the budget, inclusive`() {

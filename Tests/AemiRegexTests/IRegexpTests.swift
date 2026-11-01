@@ -91,7 +91,8 @@ struct IRegexpTests {
         #expect(pattern.firstMatch(in: bytes("a")) == nil)
         #expect(
             try Pattern("[^a]", syntax: .iRegexp).firstMatch(in: bytes("b")) != nil,
-            "inside a class a leading caret negates")
+            "inside a class a leading caret negates"
+        )
         #expect(try Pattern("[a^]", syntax: .iRegexp).firstMatch(in: bytes("^")) != nil)
     }
 
@@ -120,7 +121,8 @@ struct IRegexpTests {
         #expect(try Pattern("b+", syntax: .iRegexp, matching: .search).firstMatch(in: bytes("abbc"))?.range == 1 ..< 3)
         #expect(
             try Pattern("b+", syntax: .re2).firstMatch(in: bytes("abbc"))?.range == 1 ..< 3,
-            "RE2 syntax searches by default")
+            "RE2 syntax searches by default"
+        )
         #expect(try Pattern("b+", syntax: .re2, matching: .wholeString).firstMatch(in: bytes("abbc")) == nil)
     }
 
@@ -145,7 +147,9 @@ struct IRegexpTests {
         #expect(try accepts(#"[^ \t\n\r]"#, "x") && !accepts(#"[^ \t\n\r]"#, " ") && !accepts(#"[^ \t\n\r]"#, "\t"))
         #expect(try accepts(#"[^\t\n\r]"#, " ") && !accepts(#"[^\t\n\r]"#, "\n"))
         #expect(
-            try accepts("[0-9]", "7") && !accepts("[0-9]", "٣"), "the substitute for \\d is ASCII digits, not \\p{Nd}")
+            try accepts("[0-9]", "7") && !accepts("[0-9]", "٣"),
+            "the substitute for \\d is ASCII digits, not \\p{Nd}"
+        )
         for escape in [#"\d"#, #"\s"#, #"\w"#, #"\S"#, #"[\d]"#, #"\p{IsBasicLatin}"#, #"[\u0000-\u007f]"#] {
             #expect(throws: PatternError.self, "\(escape) is not in I-Regexp") { try Pattern(escape, syntax: .iRegexp) }
         }

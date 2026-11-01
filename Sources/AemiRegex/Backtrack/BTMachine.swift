@@ -36,7 +36,10 @@ struct BTMachine {
     /// - Returns: The match, or `nil` when there is none.
     /// - Throws: ``BacktrackError`` when a budget runs out.
     mutating func firstMatch(
-        in bytes: CheckedBytes, from start: Int, anchored: Bool = false, nonEmptyAtStart: Bool = false
+        in bytes: CheckedBytes,
+        from start: Int,
+        anchored: Bool = false,
+        nonEmptyAtStart: Bool = false
     ) throws(BacktrackError) -> Match? {
         guard start >= 0, start <= bytes.count else { return nil }
         forbiddenEmpty = nonEmptyAtStart ? start : nil
@@ -96,7 +99,10 @@ struct BTMachine {
 
     /// Runs one instruction, moving `pc` and `pos` on.
     private mutating func execute(
-        _ instruction: BTInstruction, in bytes: CheckedBytes, pc: inout Int, pos: inout Int
+        _ instruction: BTInstruction,
+        in bytes: CheckedBytes,
+        pc: inout Int,
+        pos: inout Int
     ) throws(BacktrackError) -> Step {
         var ok = true
         switch instruction.op {

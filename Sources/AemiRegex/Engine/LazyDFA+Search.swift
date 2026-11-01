@@ -46,7 +46,10 @@ extension LazyDFA {
     /// Finds the smallest start `>= floor` of a match that ends exactly at `end`, scanning backwards over the reversed program.
     /// - Returns: The start, or `nil` when no match ends there. `gaveUp` is set when the cache limit stopped the scan.
     mutating func searchReverse(
-        _ haystack: UnsafeBufferPointer<UInt8>, end: Int, floor: Int, gaveUp: inout Bool
+        _ haystack: UnsafeBufferPointer<UInt8>,
+        end: Int,
+        floor: Int,
+        gaveUp: inout Bool
     ) -> Int? {
         var position = end
         var state = startStates[end == haystack.count ? NeighborContext.edge : contextOf(unsafe haystack[end])]

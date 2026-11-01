@@ -8,7 +8,9 @@ struct NoRecursionTests {
 
     @Test func `a function that calls itself is found`() {
         let found = RecursionScan.findings(
-            swift: swift("func countdown(_ n: Int) -> Int { n == 0 ? 0 : countdown(n - 1) }"), go: [])
+            swift: swift("func countdown(_ n: Int) -> Int { n == 0 ? 0 : countdown(n - 1) }"),
+            go: []
+        )
         #expect(found.count == 1)
         #expect(found.first?.contains("countdown(_:)") == true)
     }
@@ -75,7 +77,9 @@ struct NoRecursionTests {
         while let directory = pending.popLast() {
             let entries =
                 (try? FileManager.default.contentsOfDirectory(
-                    at: directory, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
+                    at: directory,
+                    includingPropertiesForKeys: [.isDirectoryKey]
+                )) ?? []
             for entry in entries {
                 if entry.lastPathComponent == ".build" { continue }
                 if (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
@@ -93,7 +97,8 @@ struct NoRecursionTests {
         let go = Self.sources(extension: "go")
         #expect(
             swift.count > 40 && go.count >= 3,
-            "the scan must see the repository: \(swift.count) Swift files, \(go.count) Go files")
+            "the scan must see the repository: \(swift.count) Swift files, \(go.count) Go files"
+        )
         let found = RecursionScan.findings(swift: swift, go: go)
         #expect(found.isEmpty, "\(found.joined(separator: "\n"))")
     }

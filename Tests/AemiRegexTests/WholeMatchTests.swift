@@ -68,7 +68,10 @@ struct WholeMatchTests {
     @Test func `a failing whole match on the backtracker tries one start, not every one`() throws {
         // From every start `a+b` runs to the end and back, O(n²) steps in all; anchored at the start it is O(n).
         let pattern = try BacktrackingPattern(
-            "a+b", dialect: .ecmaScript, budget: .init(maxSteps: 50_000, maxStackEntries: 1 << 16))
+            "a+b",
+            dialect: .ecmaScript,
+            budget: .init(maxSteps: 50_000, maxStackEntries: 1 << 16)
+        )
         let text = String(repeating: "a", count: 2_000)
         #expect(try pattern.wholeMatch(in: text) == nil)
         #expect(try pattern.prefixMatch(in: text + "b")?.range == 0 ..< 2_001)

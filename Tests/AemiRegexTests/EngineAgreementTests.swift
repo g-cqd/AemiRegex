@@ -12,7 +12,8 @@ struct EngineAgreementTests {
             let bytes = Array(haystack.utf8)
             #expect(
                 fast.matches(in: bytes) == reference.matches(in: bytes),
-                "/\(golden.pattern)/ on \(haystack.debugDescription)")
+                "/\(golden.pattern)/ on \(haystack.debugDescription)"
+            )
         }
     }
 

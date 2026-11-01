@@ -126,8 +126,12 @@ struct LazyDFA {
         sawMatch = false
         for slot in 1 ..< key.count {
             let matched = walker.walk(
-                from: Int(key[slot]), in: instructions, policy: .check(previous: previous, next: next),
-                cutAtMatch: !longest, into: &live)
+                from: Int(key[slot]),
+                in: instructions,
+                policy: .check(previous: previous, next: next),
+                cutAtMatch: !longest,
+                into: &live
+            )
             sawMatch = sawMatch || matched
             if sawMatch, !longest { return true }
         }

@@ -28,7 +28,9 @@ struct BTParser: PatternCursor {
     var isECMAScript: Bool { dialect == .ecmaScript }
 
     private init(
-        _ pattern: String, dialect: BacktrackingPattern.Dialect, options: BacktrackingPattern.Options,
+        _ pattern: String,
+        dialect: BacktrackingPattern.Dialect,
+        options: BacktrackingPattern.Options,
         limits: Pattern.Limits
     ) {
         let text = PatternText(pattern)
@@ -37,13 +39,18 @@ struct BTParser: PatternCursor {
         self.dialect = dialect
         self.limits = limits
         flags = BTFlags(
-            ignoreCase: options.contains(.ignoreCase), multiLine: options.contains(.multiLine),
-            dotAll: options.contains(.dotAll), extended: options.contains(.extended),
-            unicodeSets: options.contains(.unicodeSets))
+            ignoreCase: options.contains(.ignoreCase),
+            multiLine: options.contains(.multiLine),
+            dotAll: options.contains(.dotAll),
+            extended: options.contains(.extended),
+            unicodeSets: options.contains(.unicodeSets)
+        )
     }
 
     static func parse(
-        _ pattern: String, dialect: BacktrackingPattern.Dialect, options: BacktrackingPattern.Options = [],
+        _ pattern: String,
+        dialect: BacktrackingPattern.Dialect,
+        options: BacktrackingPattern.Options = [],
         limits: Pattern.Limits
     ) throws(PatternError) -> BTSyntaxTree {
         guard pattern.utf8.count <= limits.maxPatternBytes else { throw .limit(.patternLength) }
@@ -110,7 +117,8 @@ struct BTParser: PatternCursor {
             case 0x2E:
                 let lines = BTSets.lineTerminators(dialect)
                 try addSet(
-                    flags.dotAll ? UnicodeScalarSet(normalizing: [0 ... UnicodeScalarSet.maxScalar]) : lines.negated())
+                    flags.dotAll ? UnicodeScalarSet(normalizing: [0 ... UnicodeScalarSet.maxScalar]) : lines.negated()
+                )
                 position += 1
             case 0x5E:
                 try add(.assertion(flags.multiLine ? .beginLine : .beginText))

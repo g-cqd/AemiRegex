@@ -40,12 +40,14 @@ let package = Package(
                 .product(name: "AemiKernels", package: "aemi"), .product(name: "AemiKernel", package: "aemi"),
                 .product(name: "AemiUnicode", package: "aemi"), .product(name: "AemiRuntime", package: "aemi")
             ],
-            swiftSettings: kernelSettings),
+            swiftSettings: kernelSettings
+        ),
         .testTarget(
             name: "AemiRegexTests",
             dependencies: ["AemiRegex"],
             resources: [.copy("Resources")],
-            swiftSettings: strictSettings)
+            swiftSettings: strictSettings
+        )
     ]
 )
 
@@ -57,5 +59,7 @@ if Context.environment["AEMIREGEX_DEV"] != nil {
             name: "AemiRegexBench",
             dependencies: ["AemiRegex"],
             path: "Benchmarks/AemiRegexBench",
-            swiftSettings: strictSettings))
+            swiftSettings: strictSettings
+        )
+    )
 }

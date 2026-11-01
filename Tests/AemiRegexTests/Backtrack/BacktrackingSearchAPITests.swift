@@ -15,11 +15,13 @@ struct BacktrackingSearchAPITests {
         #expect(
             try BacktrackingPattern(alternatives, dialect: .ecmaScript).matches(in: "a").map(\.range) == [
                 0 ..< 0, 1 ..< 1
-            ])
+            ]
+        )
         #expect(
             try BacktrackingPattern(alternatives, dialect: .pcre2).matches(in: "a").map(\.range) == [
                 0 ..< 0, 0 ..< 1, 1 ..< 1
-            ])
+            ]
+        )
     }
 
     @Test func `a String is searched by UTF-8 offset and mapped back with range(in:)`() throws {
