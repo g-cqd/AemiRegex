@@ -14,6 +14,10 @@ extension Pattern {
         public var maxDFACacheBytes = 2 << 20
 
         public static let `default` = Limits(
-            maxPatternBytes: 64 * 1024, maxNestingDepth: 250, maxProgramSize: 100_000, maxRepetition: 1000)
+            maxPatternBytes: 64 * 1024,
+            maxNestingDepth: 250,
+            maxProgramSize: 100_000,
+            maxRepetition: 1000
+        )
     }
 }

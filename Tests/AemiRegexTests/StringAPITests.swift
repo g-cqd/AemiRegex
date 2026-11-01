@@ -29,7 +29,8 @@ struct StringAPITests {
             for match in viaString {
                 #expect(
                     String(text[match.range(in: text)]) == Self.slice(text, match.range),
-                    "/\(source)/ on \(text.debugDescription)")
+                    "/\(source)/ on \(text.debugDescription)"
+                )
                 for group in 1 ..< match.groups.count {
                     let expected = match[group: group].map { Self.slice(text, $0) }
                     #expect(match.range(ofGroup: group, in: text).map { String(text[$0]) } == expected)

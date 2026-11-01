@@ -1,7 +1,10 @@
 extension BTCompiler {
     /// `body{min,max}` as the required copies, then either a loop (no upper bound) or nested optional copies.
     mutating func repetition(
-        _ body: BTFragment, min: Int, max: Int?, mode: BTRepeatMode
+        _ body: BTFragment,
+        min: Int,
+        max: Int?,
+        mode: BTRepeatMode
     ) throws(PatternError) -> BTFragment {
         let copies = Swift.max(max ?? (min + 1), 1)
         guard body.code.count * copies + 4 * copies <= limits.maxProgramSize else { throw .limit(.programSize) }
@@ -41,8 +44,12 @@ extension BTCompiler {
         }
         let longest: Int? = body.maxLength == 0 ? 0 : max.flatMap { count in body.maxLength.map { count * $0 } }
         return BTFragment(
-            code: code, canBeEmpty: min == 0 || body.canBeEmpty, groups: body.groups, minLength: min * body.minLength,
-            maxLength: longest)
+            code: code,
+            canBeEmpty: min == 0 || body.canBeEmpty,
+            groups: body.groups,
+            minLength: min * body.minLength,
+            maxLength: longest
+        )
     }
 
     private mutating func newRegister() -> Int {

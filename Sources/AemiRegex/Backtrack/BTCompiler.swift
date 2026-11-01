@@ -16,15 +16,22 @@ struct BTCompiler {
     }
 
     static func compile(
-        _ tree: BTSyntaxTree, dialect: BacktrackingPattern.Dialect, limits: Pattern.Limits
+        _ tree: BTSyntaxTree,
+        dialect: BacktrackingPattern.Dialect,
+        limits: Pattern.Limits
     ) throws(PatternError) -> BTProgram {
         var compiler = BTCompiler(tree: tree, dialect: dialect, limits: limits)
         var code = try compiler.run()
         try patchCalls(in: &code)
         code.append(BTInstruction(.match))
         return BTProgram(
-            code: ContiguousArray(code), sets: tree.sets, captureCount: tree.captureCount,
-            registerCount: compiler.registerCount, dialect: dialect, names: tree.names)
+            code: ContiguousArray(code),
+            sets: tree.sets,
+            captureCount: tree.captureCount,
+            registerCount: compiler.registerCount,
+            dialect: dialect,
+            names: tree.names
+        )
     }
 
     private mutating func run() throws(PatternError) -> [BTInstruction] {
@@ -63,7 +70,9 @@ struct BTCompiler {
     }
 
     private mutating func emit(
-        _ node: BTNode, _ children: [BTFragment], backward: Bool
+        _ node: BTNode,
+        _ children: [BTFragment],
+        backward: Bool
     ) throws(PatternError) -> BTFragment {
         switch node.kind {
             case .empty:
@@ -83,16 +92,26 @@ struct BTCompiler {
                 let ranges = tree.sets[index].scalars.ranges
                 if ranges.count == 1, let only = ranges.first, only.lowerBound == only.upperBound {
                     return BTFragment(
-                        code: [BTInstruction(.char, backward: backward, Int(only.lowerBound))], canBeEmpty: false,
-                        groups: nil, minLength: 1, maxLength: 1)
+                        code: [BTInstruction(.char, backward: backward, Int(only.lowerBound))],
+                        canBeEmpty: false,
+                        groups: nil,
+                        minLength: 1,
+                        maxLength: 1
+                    )
                 }
                 return BTFragment(
-                    code: [BTInstruction(.set, backward: backward, index)], canBeEmpty: false, groups: nil,
+                    code: [BTInstruction(.set, backward: backward, index)],
+                    canBeEmpty: false,
+                    groups: nil,
                     minLength: 1,
-                    maxLength: 1)
+                    maxLength: 1
+                )
             case .assertion(let assertion):
                 return BTFragment(
-                    code: [BTInstruction(.assertion, Int(assertion.rawValue))], canBeEmpty: true, groups: nil)
+                    code: [BTInstruction(.assertion, Int(assertion.rawValue))],
+                    canBeEmpty: true,
+                    groups: nil
+                )
             case .backReference(let group, let ignoreCase):
                 return reference(group: group, ignoreCase: ignoreCase, backward: backward)
             case .namedBackReference(let name, let ignoreCase):
@@ -107,8 +126,11 @@ struct BTCompiler {
                 groupLengths[capture] = (body.minLength, body.maxLength)
                 return BTFragment(
                     code: [BTInstruction(.save, open)] + body.code + [closing],
-                    canBeEmpty: body.canBeEmpty, groups: BTFragment.merged(body.groups, own),
-                    minLength: body.minLength, maxLength: body.maxLength)
+                    canBeEmpty: body.canBeEmpty,
+                    groups: BTFragment.merged(body.groups, own),
+                    minLength: body.minLength,
+                    maxLength: body.maxLength
+                )
             case .concatenation:
                 return BTFragment.joining(children, backward: backward)
             case .alternation:
@@ -125,8 +147,11 @@ struct BTCompiler {
                 let body = children[0]
                 return BTFragment(
                     code: [BTInstruction(.atomicStart)] + body.code + [BTInstruction(.atomicEnd)],
-                    canBeEmpty: body.canBeEmpty, groups: body.groups, minLength: body.minLength,
-                    maxLength: body.maxLength)
+                    canBeEmpty: body.canBeEmpty,
+                    groups: body.groups,
+                    minLength: body.minLength,
+                    maxLength: body.maxLength
+                )
         }
     }
 
@@ -151,8 +176,12 @@ struct BTCompiler {
         // A group not compiled yet is unset when a forward-reading look-behind reaches the reference, so it consumes nothing.
         let length = groupLengths[group] ?? (0, 0)
         return BTFragment(
-            code: [BTInstruction(.backReference, backward: backward, group, ignoreCase ? 1 : 0)], canBeEmpty: true,
-            groups: nil, minLength: length.min, maxLength: length.max)
+            code: [BTInstruction(.backReference, backward: backward, group, ignoreCase ? 1 : 0)],
+            canBeEmpty: true,
+            groups: nil,
+            minLength: length.min,
+            maxLength: length.max
+        )
     }
 
     /// `a|b|c`: each branch is tried in order, and the first that leads to a match wins.
@@ -172,10 +201,13 @@ struct BTCompiler {
             }
         }
         return BTFragment(
-            code: code, canBeEmpty: branches.contains { $0.canBeEmpty }, groups: groups,
+            code: code,
+            canBeEmpty: branches.contains { $0.canBeEmpty },
+            groups: groups,
             minLength: branches.map(\.minLength).min() ?? 0,
             maxLength: branches.reduce(0 as Int?) { longest, branch in
                 longest.flatMap { top in branch.maxLength.map { max(top, $0) } }
-            })
+            }
+        )
     }
 }

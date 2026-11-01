@@ -40,7 +40,10 @@ public struct BacktrackingPattern: Sendable {
     ///   - budget: What each search may cost.
     /// - Throws: ``PatternError`` with the offset in `pattern`, or `.unsupported` for a construct this engine does not run yet.
     public init(
-        _ pattern: String, dialect: Dialect, options: Options = [], limits: Pattern.Limits = .default,
+        _ pattern: String,
+        dialect: Dialect,
+        options: Options = [],
+        limits: Pattern.Limits = .default,
         budget: Budget = .default
     ) throws(PatternError) {
         self.pattern = pattern

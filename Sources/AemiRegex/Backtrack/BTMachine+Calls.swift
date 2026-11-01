@@ -18,7 +18,14 @@ extension BTMachine {
         try push(.callEnter, currentFrame, 0)
         callFrames.append(
             BTCallFrame(
-                group: group, returnPC: returnPC, parent: currentFrame, snapshot: slots, depth: depth, startPos: pos))
+                group: group,
+                returnPC: returnPC,
+                parent: currentFrame,
+                snapshot: slots,
+                depth: depth,
+                startPos: pos
+            )
+        )
         currentFrame = callFrames.count - 1
         return true
     }

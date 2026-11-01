@@ -31,7 +31,10 @@ struct EpsilonWalker {
     ///   - list: Receives the program counters, in priority order.
     /// - Returns: Whether this walk added a `match`.
     mutating func walk(
-        from start: Int, in instructions: ContiguousArray<Instruction>, policy: Policy, cutAtMatch: Bool,
+        from start: Int,
+        in instructions: ContiguousArray<Instruction>,
+        policy: Policy,
+        cutAtMatch: Bool,
         into list: inout [Int32]
     ) -> Bool {
         var matched = false

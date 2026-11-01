@@ -50,7 +50,8 @@ struct RepositoryHygieneTests {
                         || path.hasSuffix(".toml")
                 else { return nil }
                 return try? String(contentsOf: root.appending(path: path), encoding: .utf8)
-            })
+            }
+        )
         #expect(found.isEmpty, "\(found.joined(separator: "\n"))")
     }
 }

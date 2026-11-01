@@ -171,7 +171,9 @@ extension BTParser {
     private mutating func parseFlags(open: Int) throws(PatternError) {
         var updated = flags
         let scan = try scanFlags(
-            from: position + 2, closers: isECMAScript ? [0x3A] : [0x29, 0x3A], allowEmptyNegation: !isECMAScript
+            from: position + 2,
+            closers: isECMAScript ? [0x3A] : [0x29, 0x3A],
+            allowEmptyNegation: !isECMAScript
         ) { letter, on in
             switch letter {
                 case 0x69: updated.ignoreCase = !on

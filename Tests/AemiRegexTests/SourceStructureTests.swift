@@ -10,7 +10,8 @@ struct SourceStructureTests {
         #expect(SourceStructure.problems(in: file("Box+Sendable.swift", "extension Box: Sendable {}\n")).isEmpty)
         #expect(
             SourceStructure.problems(in: file("Box+More.swift", "extension Box {}\nextension Box: Equatable {}\n"))
-                .isEmpty)
+                .isEmpty
+        )
         #expect(SourceStructure.problems(in: file("Fixture.swift", "public final class Fixture {}\n")).isEmpty)
         #expect(SourceStructure.problems(in: file("Outer+Inner+Feature.swift", "extension Outer.Inner {}\n")).isEmpty)
         #expect(SourceStructure.problems(in: file("Outer+Inner.swift", "extension Outer.Inner {}\n")).isEmpty)
@@ -51,7 +52,9 @@ struct SourceStructureTests {
         while let directory = pending.popLast() {
             let entries =
                 (try? FileManager.default.contentsOfDirectory(
-                    at: directory, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
+                    at: directory,
+                    includingPropertiesForKeys: [.isDirectoryKey]
+                )) ?? []
             for entry in entries {
                 if (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
                     pending.append(entry)

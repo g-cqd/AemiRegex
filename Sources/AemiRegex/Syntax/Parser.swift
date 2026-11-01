@@ -30,7 +30,10 @@ struct Parser: PatternCursor {
     }
 
     static func compile(
-        _ pattern: String, limits: Pattern.Limits, reverse: Bool = false, wholeString: Bool = false
+        _ pattern: String,
+        limits: Pattern.Limits,
+        reverse: Bool = false,
+        wholeString: Bool = false
     ) throws(PatternError) -> Program {
         guard pattern.utf8.count <= limits.maxPatternBytes else { throw .limit(.patternLength) }
         var parser = Parser(pattern, limits: limits, reverse: reverse, wholeString: wholeString)
@@ -86,7 +89,8 @@ struct Parser: PatternCursor {
                 try emitSet(
                     flags.dotAll
                         ? UnicodeScalarSet(normalizing: [0 ... UnicodeScalarSet.maxScalar])
-                        : UnicodeScalarSet.newline.negated())
+                        : UnicodeScalarSet.newline.negated()
+                )
                 position += 1
             case 0x5E:
                 try emit([.assertion(oriented(flags.multiLine ? .beginLine : .beginText))], nullable: true)

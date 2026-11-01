@@ -49,7 +49,9 @@ extension IRegexp {
                     case 0x2A, 0x2B, 0x3F:  // * + ?
                         guard canQuantify else {
                             throw .syntax(
-                                afterQuantifier ? .nestedRepetition : .repetitionWithoutOperand, offset: offset(index))
+                                afterQuantifier ? .nestedRepetition : .repetitionWithoutOperand,
+                                offset: offset(index)
+                            )
                         }
                         output.unicodeScalars.append(Unicode.Scalar(c) ?? "?")
                         canQuantify = false
@@ -58,7 +60,9 @@ extension IRegexp {
                     case 0x7B:  // {
                         guard canQuantify else {
                             throw .syntax(
-                                afterQuantifier ? .nestedRepetition : .repetitionWithoutOperand, offset: offset(index))
+                                afterQuantifier ? .nestedRepetition : .repetitionWithoutOperand,
+                                offset: offset(index)
+                            )
                         }
                         index = try range(at: index)
                         canQuantify = false

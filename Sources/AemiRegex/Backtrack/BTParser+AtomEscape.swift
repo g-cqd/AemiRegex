@@ -64,7 +64,10 @@ extension BTParser {
 
     /// Reads a group name from `start` to `close`, records that the pattern must have such a group, and adds the node `make` builds for it.
     mutating func addNamedUse(
-        from start: Int, close: UInt32, at: Int, _ make: (String) -> BTNode.Kind
+        from start: Int,
+        close: UInt32,
+        at: Int,
+        _ make: (String) -> BTNode.Kind
     ) throws(PatternError) {
         let parsed = try name(from: start, until: close) { isNameScalar($0, first: $1) }
         pendingNames.append((parsed.name, at))

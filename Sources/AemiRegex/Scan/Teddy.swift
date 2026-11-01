@@ -22,7 +22,9 @@ struct Teddy: Sendable {
 
     /// Every candidate from `from` on, ascending, written to `out`. - Returns: how many, and where to continue.
     func candidates(
-        in bytes: UnsafeBufferPointer<UInt8>, from: Int, into out: UnsafeMutableBufferPointer<Int>
+        in bytes: UnsafeBufferPointer<UInt8>,
+        from: Int,
+        into out: UnsafeMutableBufferPointer<Int>
     ) -> (count: Int, resume: Int) {
         unsafe set.candidates(in: bytes, from: from, into: out)
     }

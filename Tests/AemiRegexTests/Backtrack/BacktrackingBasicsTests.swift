@@ -5,7 +5,9 @@ import Testing
 /// The constructs only the backtracker can run, with expectations checked against `node` (ECMAScript) and `libpcre2` (PCRE2).
 struct BacktrackingBasicsTests {
     private func find(
-        _ pattern: String, _ text: String, _ dialect: BacktrackingPattern.Dialect = .pcre2
+        _ pattern: String,
+        _ text: String,
+        _ dialect: BacktrackingPattern.Dialect = .pcre2
     ) throws -> [Range<Int>?]? {
         let compiled = try BacktrackingPattern(pattern, dialect: dialect)
         return try compiled.firstMatch(in: Array(text.utf8))?.groups

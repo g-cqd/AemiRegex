@@ -41,9 +41,17 @@ public struct Pattern: Sendable {
         self.syntax = syntax
         let compiledText = source ?? pattern
         let program = try Parser.compile(
-            compiledText, limits: limits, wholeString: wholeString)
+            compiledText,
+            limits: limits,
+            wholeString: wholeString
+        )
         let plan = try Self.makePlan(
-            compiledText, program, limits: limits, engine: engine, wholeString: wholeString)
+            compiledText,
+            program,
+            limits: limits,
+            engine: engine,
+            wholeString: wholeString
+        )
         self.program = program
         self.plan = plan
         wholeStringTwin = wholeString ? nil : WholeStringTwin(source: compiledText, limits: limits, engine: engine)
@@ -60,22 +68,35 @@ public struct Pattern: Sendable {
             SearchScratch(
                 forward: plan.map {
                     LazyDFA(
-                        program, classes: $0.forwardClasses, reverse: false, cacheLimit: cacheLimit,
-                        markStart: markStart)
+                        program,
+                        classes: $0.forwardClasses,
+                        reverse: false,
+                        cacheLimit: cacheLimit,
+                        markStart: markStart
+                    )
                 },
                 reverse: plan.map {
                     LazyDFA($0.reverse, classes: $0.reverseClasses, reverse: true, cacheLimit: cacheLimit)
                 },
-                pike: PikeVM(program))
+                pike: PikeVM(program)
+            )
         }
     }
 
     private static func makePlan(
-        _ pattern: String, _ program: Program, limits: Limits, engine: Engine, wholeString: Bool
+        _ pattern: String,
+        _ program: Program,
+        limits: Limits,
+        engine: Engine,
+        wholeString: Bool
     ) throws(PatternError) -> DFAPlan? {
         guard engine == .automatic, DFAPlan.isEligible(program) else { return nil }
         let reverse = try Parser.compile(
-            pattern, limits: limits, reverse: true, wholeString: wholeString)
+            pattern,
+            limits: limits,
+            reverse: true,
+            wholeString: wholeString
+        )
         return DFAPlan(reverse: reverse, forwardClasses: ByteClasses(program), reverseClasses: ByteClasses(reverse))
     }
 
@@ -99,8 +120,13 @@ public struct Pattern: Sendable {
         }
         let whole = (matching ?? (syntax == .re2 ? .search : .wholeString)) == .wholeString
         try self.init(
-            pattern, syntax: syntax, source: source, limits: limits, engine: .automatic,
-            wholeString: whole)
+            pattern,
+            syntax: syntax,
+            source: source,
+            limits: limits,
+            engine: .automatic,
+            wholeString: whole
+        )
     }
 
     /// The number of capture groups, not counting the whole match.

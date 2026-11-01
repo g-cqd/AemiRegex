@@ -28,7 +28,9 @@ enum UnicodeBinaryProperties {
 
     private static func loosened(_ names: [String: String]) -> [String: String] {
         Dictionary(
-            names.sorted { $0.key < $1.key }.map { (loose($0.key), $0.value) }, uniquingKeysWith: { first, _ in first })
+            names.sorted { $0.key < $1.key }.map { (loose($0.key), $0.value) },
+            uniquingKeysWith: { first, _ in first }
+        )
     }
 
     /// `name` lower-cased with spaces, underscores and hyphens removed.

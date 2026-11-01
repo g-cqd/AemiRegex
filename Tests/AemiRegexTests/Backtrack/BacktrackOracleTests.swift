@@ -12,13 +12,16 @@ struct BacktrackOracleTests {
         ("backtrack-curated-pcre2", BacktrackingPattern.Dialect.pcre2)
     ])
     func `the backtracker agrees with the oracle on generated and curated patterns`(
-        fixture: String, dialect: BacktrackingPattern.Dialect
+        fixture: String,
+        dialect: BacktrackingPattern.Dialect
     ) {
         let cases = BacktrackFixture.load(fixture)
         #expect(cases.count >= 300, "the fixture \(fixture) must load")
         let report = BacktrackConformance.run(cases, dialect: dialect)
         #expect(
-            report.mismatches.isEmpty, "\(report.mismatches.count) of \(cases.count): \(report.mismatches.prefix(12))")
+            report.mismatches.isEmpty,
+            "\(report.mismatches.count) of \(cases.count): \(report.mismatches.prefix(12))"
+        )
         let ranOutOfBudget = report.skipped.filter { $0.hasPrefix("budget") }
         #expect(ranOutOfBudget.isEmpty, "\(ranOutOfBudget.count) cases used up the budget: \(ranOutOfBudget.prefix(6))")
         if fixture.contains("curated") {

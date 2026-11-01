@@ -28,7 +28,10 @@ struct DifferentialTests {
                     let wrapper = ["(%@)", "(?:%@)", "(?i:%@)"].randomElement(using: &rng) ?? "(%@)"
                     atoms.append(
                         Fragment(
-                            text: wrapper.replacingOccurrences(of: "%@", with: inner.text), nullable: inner.nullable))
+                            text: wrapper.replacingOccurrences(of: "%@", with: inner.text),
+                            nullable: inner.nullable
+                        )
+                    )
                 }
             }
         }
@@ -41,7 +44,8 @@ struct DifferentialTests {
                 case 1:
                     return Fragment(
                         text: ["[ab]", "[^a]", "[a-c]", "[^bc]", #"\w"#, #"\W"#].randomElement(using: &rng) ?? "[ab]",
-                        nullable: false)
+                        nullable: false
+                    )
                 default: return Fragment(text: String("abc".randomElement(using: &rng) ?? "a"), nullable: false)
             }
         }
@@ -51,7 +55,9 @@ struct DifferentialTests {
             guard !base.nullable, Int.random(in: 0 ..< 3, using: &rng) == 0 else { return base }
             let op = ["*", "+", "?", "*?", "+?", "??", "{2}", "{1,2}", "{0,2}?"].randomElement(using: &rng) ?? "*"
             return Fragment(
-                text: base.text + op, nullable: op.hasPrefix("*") || op.hasPrefix("?") || op.hasPrefix("{0"))
+                text: base.text + op,
+                nullable: op.hasPrefix("*") || op.hasPrefix("?") || op.hasPrefix("{0")
+            )
         }
 
         private static func sequence(_ rng: inout SplitMix64, from pool: [Fragment]) -> Fragment {
@@ -62,7 +68,9 @@ struct DifferentialTests {
         private static func alternation(_ rng: inout SplitMix64, from pool: [Fragment]) -> Fragment {
             let branches = (0 ..< Int.random(in: 1 ... 3, using: &rng)).map { _ in sequence(&rng, from: pool) }
             return Fragment(
-                text: branches.map(\.text).joined(separator: "|"), nullable: branches.contains { $0.nullable })
+                text: branches.map(\.text).joined(separator: "|"),
+                nullable: branches.contains { $0.nullable }
+            )
         }
     }
 

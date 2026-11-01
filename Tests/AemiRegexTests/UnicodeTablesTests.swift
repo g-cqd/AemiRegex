@@ -10,7 +10,8 @@ struct UnicodeTablesTests {
 
     private static let codes = Array(
         "Lu Ll Lt Lm Lo Mn Mc Me Nd Nl No Pc Pd Ps Pe Pi Pf Po Sm Sc Sk So Zs Zl Zp Cc Cf Cs Co Cn"
-            .split(separator: " ").map(String.init))
+            .split(separator: " ").map(String.init)
+    )
 
     // MARK: Categories
 
@@ -36,7 +37,8 @@ struct UnicodeTablesTests {
         ("l", "L")
     ])
     func `a property name is matched loosely: case, spaces, underscores and hyphens do not count`(
-        spelling: String, canonical: String
+        spelling: String,
+        canonical: String
     ) throws {
         let found = try #require(Self.set(spelling), "\(spelling) must name a property")
         #expect(found == Self.set(canonical), "\(spelling) is \(canonical)")

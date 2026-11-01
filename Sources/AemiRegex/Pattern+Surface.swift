@@ -63,7 +63,9 @@ extension Pattern {
 
     /// Splits `text` around matches of this pattern.
     public func split<S: StringProtocol>(
-        in text: S, maxSplits: Int = Int.max, omittingEmptySubsequences: Bool = false
+        in text: S,
+        maxSplits: Int = Int.max,
+        omittingEmptySubsequences: Bool = false
     ) -> [Substring] {
         guard maxSplits >= 0 else { return [Substring(text[...])] }
         var result: [Substring] = []

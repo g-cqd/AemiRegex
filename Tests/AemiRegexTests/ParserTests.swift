@@ -36,7 +36,11 @@ struct ParserTests {
 
     @Test func `a pattern longer than the limit is rejected before it is parsed`() {
         let limits = Pattern.Limits(
-            maxPatternBytes: 8, maxNestingDepth: 250, maxProgramSize: 100_000, maxRepetition: 1000)
+            maxPatternBytes: 8,
+            maxNestingDepth: 250,
+            maxProgramSize: 100_000,
+            maxRepetition: 1000
+        )
         #expect(throws: PatternError.limit(.patternLength)) { try Pattern("abcdefghi", limits: limits) }
         #expect(throws: Never.self) { try Pattern("abcdefgh", limits: limits) }
     }
@@ -44,7 +48,11 @@ struct ParserTests {
     @Test func `nesting deeper than the limit is rejected without recursing`() {
         let deep = String(repeating: "(", count: 100_000) + "a" + String(repeating: ")", count: 100_000)
         let limits = Pattern.Limits(
-            maxPatternBytes: 1 << 20, maxNestingDepth: 250, maxProgramSize: 1 << 20, maxRepetition: 1000)
+            maxPatternBytes: 1 << 20,
+            maxNestingDepth: 250,
+            maxProgramSize: 1 << 20,
+            maxRepetition: 1000
+        )
         #expect(throws: PatternError.limit(.nestingDepth)) { try Pattern(deep, limits: limits) }
     }
 
