@@ -1,0 +1,8 @@
+{
+  "swift": {
+    "environment": {
+      "AEMIREGEX_DEV": "1",
+      "AD_TYPECHECK_BUDGET_MS": "250"
+    }
+  }
+}
