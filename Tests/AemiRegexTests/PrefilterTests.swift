@@ -9,7 +9,7 @@ struct PrefilterTests {
         var testDescription: String { "/\(pattern)/" }
     }
 
-    // Construct per request: avoid process-lifetime heap allocations in the sanitizer test runner.
+    // Construct inside the test, not its parameter generator: expected heap-backed values then have a bounded lifetime.
     static var cases: [Case] {
         [
             Case(pattern: "a", kind: .byte(0x61)),
@@ -36,9 +36,10 @@ struct PrefilterTests {
         ]
     }
 
-    @Test(arguments: cases)
-    func `the prefilter is the most selective scan the pattern allows`(case c: Case) throws {
-        #expect(try Pattern(c.pattern).prefilter.kind == c.kind)
+    @Test func `the prefilter is the most selective scan the pattern allows`() throws {
+        for c in Self.cases {
+            #expect(try Pattern(c.pattern).prefilter.kind == c.kind, "pattern: \(c.pattern)")
+        }
     }
 
     @Test func `a prefilter never skips a position where a match starts`() throws {
