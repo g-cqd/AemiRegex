@@ -10,8 +10,8 @@ swift test -c release --enable-testable-imports          # the suite, in release
 AEMIREGEX_DEV=1 swift test                               # debug: assertions and bounds checks on unsafe pointers are live
 swift test --sanitize=address --sanitize=undefined --enable-testable-imports
 swift test --sanitize=thread --enable-testable-imports
-AEMIREGEX_DEV=1 swift package --disable-sandbox lint     # the shared Aemi lint; also the pre-commit hook's formatter
-Scripts/analyzers.sh                                     # deadwood, dolly, arcleak, pinned by version and SHA-256
+.ci/swift-ci run quality                                 # what CI's quality runs (format, SwiftLint, discipline, analyzers); the hooks' gate
+.ci/swift-ci local                                       # quality, then the debug tests
 Scripts/bench-compare.sh                                 # AemiRegex vs ICU, Swift Regex, Go, Rust regex, PCRE2 JIT (frozen corpus)
 go run Scripts/golden/gen.go > Tests/AemiRegexTests/Resources/re2-golden.jsonl            # regenerate the Go oracle fixtures
 go run Scripts/golden/generated/gen.go > Tests/AemiRegexTests/Resources/re2-generated.jsonl
