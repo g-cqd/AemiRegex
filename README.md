@@ -63,8 +63,7 @@ subroutine calls and recursion, conditionals, binary Unicode properties and `Scr
 ```sh
 git config core.hooksPath .githooks
 swift test -c release --enable-testable-imports        # the suite
-AEMIREGEX_DEV=1 swift package --disable-sandbox lint   # the shared lint
-Scripts/analyzers.sh                                   # deadwood, dolly, arcleak
+.ci/swift-ci run quality                               # format, SwiftLint, discipline, deadwood, dolly, arcleak (as CI)
 Scripts/bench-compare.sh                               # AemiRegex vs ICU, Swift Regex, Go, Rust regex, PCRE2 JIT
 AEMIREGEX_DEV=1 swift run -c release AemiRegexBench <corpus-dir>
 go run Scripts/golden/gen.go > Tests/AemiRegexTests/Resources/re2-golden.jsonl   # regenerate the Go oracle fixture

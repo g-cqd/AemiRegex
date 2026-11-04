@@ -7,5 +7,19 @@
     "linuxLeakSuppressions": [
       "_CFRegularExpressionCreate"
     ]
+  },
+  "quality": {
+    "discipline": {
+      "shipped": [
+        "Sources/AemiRegex"
+      ],
+      "forceUnwrap": true,
+      "rules": [
+        "strtod",
+        "inline-prng",
+        "untyped-throws",
+        "wall-clock"
+      ]
+    }
   }
 }
