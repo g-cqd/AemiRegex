@@ -1,3 +1,4 @@
+import AemiKernel
 import Testing
 
 @testable import AemiRegex
@@ -107,7 +108,7 @@ struct LiteralMatcherTests {
         var text: [UInt8] = []
         var expected: [Range<Int>] = []
         let words = ["import", "struct", "enum"]
-        var rng = SplitMix64(state: 0x51ACED)
+        var rng = SplitMix64(seed: 0x51ACED)
         for _ in 0 ..< 300 {
             let spacing = [1, 7, 60, 400, 3000].randomElement(using: &rng) ?? 1
             text += [UInt8](repeating: 0x2E, count: spacing)

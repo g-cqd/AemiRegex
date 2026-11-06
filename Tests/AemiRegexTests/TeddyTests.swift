@@ -1,3 +1,4 @@
+import AemiKernel
 import Testing
 
 @testable import AemiRegex
@@ -22,7 +23,7 @@ struct TeddyTests {
 
     @Test(arguments: sizes)
     func `the SIMD kernel returns exactly what the scalar reference returns, from every offset`(size: Int) {
-        var rng = SplitMix64(state: UInt64(size) &* 0x9E37 &+ 11)
+        var rng = SplitMix64(seed: UInt64(size) &* 0x9E37 &+ 11)
         for round in 0 ..< 12 {
             let pairs = Self.randomPairs(&rng, count: 1 + round % ByteScan.maxPairCount)
             let teddy = Teddy(pairs)
@@ -37,7 +38,7 @@ struct TeddyTests {
 
     @Test(arguments: sizes)
     func `a candidate is never later than the first real pair, and none is offered when no pair exists`(size: Int) {
-        var rng = SplitMix64(state: UInt64(size) &* 0x51 &+ 3)
+        var rng = SplitMix64(seed: UInt64(size) &* 0x51 &+ 3)
         for round in 0 ..< 12 {
             let pairs = Self.randomPairs(&rng, count: 1 + round % ByteScan.maxPairCount)
             let teddy = Teddy(pairs)
@@ -88,7 +89,7 @@ struct TeddyTests {
 
     @Test(arguments: sizes)
     func `the batch call lists every candidate once, in order, for any capacity and start`(size: Int) {
-        var rng = SplitMix64(state: UInt64(size) &* 0x77 &+ 5)
+        var rng = SplitMix64(seed: UInt64(size) &* 0x77 &+ 5)
         for round in 0 ..< 10 {
             let pairs = Self.randomPairs(&rng, count: 1 + round % ByteScan.maxPairCount)
             let teddy = Teddy(pairs)
@@ -147,7 +148,7 @@ struct TeddyTests {
     func `a haystack where every position is a candidate fills any capacity without writing past it`(size: Int) {
         guard size >= 2 else { return }
         let teddy = Teddy([BytePair(0x61, 0x61), BytePair(0x61, 0x62), BytePair(0x62, 0x61), BytePair(0x62, 0x62)])
-        var rng = SplitMix64(state: UInt64(size))
+        var rng = SplitMix64(seed: UInt64(size))
         let bytes: [UInt8] = (0 ..< size).map { _ in Bool.random(using: &rng) ? 0x61 : 0x62 }
         for capacity in [1, 2, 15, 16, 17, 63, 64, 65, 100, 256] {
             var collected: [Int] = []
