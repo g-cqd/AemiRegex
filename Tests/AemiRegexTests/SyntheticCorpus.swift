@@ -1,3 +1,5 @@
+import AemiKernel
+
 /// A deterministic, Swift-looking corpus split into file-sized chunks, so the speed gate does not depend on any checkout.
 enum SyntheticCorpus {
     private static let words = [
@@ -36,7 +38,7 @@ enum SyntheticCorpus {
 
     /// `files` chunks of about `bytesPerFile` bytes each.
     static func files(count files: Int = 400, bytesPerFile: Int = 2600) -> [[UInt8]] {
-        var rng = SplitMix64(state: 0x5EED_2026)
+        var rng = SplitMix64(seed: 0x5EED_2026)
         return (0 ..< files)
             .map { _ in
                 var text = ""

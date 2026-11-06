@@ -44,7 +44,7 @@ let package = Package(
         ),
         .testTarget(
             name: "AemiRegexTests",
-            dependencies: ["AemiRegex"],
+            dependencies: ["AemiRegex", .product(name: "AemiKernel", package: "aemi")],
             resources: [.copy("Resources")],
             swiftSettings: strictSettings
         )

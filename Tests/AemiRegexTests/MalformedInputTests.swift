@@ -1,3 +1,4 @@
+import AemiKernel
 import Testing
 
 @testable import AemiRegex
@@ -16,7 +17,7 @@ struct MalformedInputTests {
     ]
 
     static let haystacks: [[UInt8]] = {
-        var rng = SplitMix64(state: 0xBAD_B17E5)
+        var rng = SplitMix64(seed: 0xBAD_B17E5)
         var result: [[UInt8]] = []
         for _ in 0 ..< 30 {
             result.append(

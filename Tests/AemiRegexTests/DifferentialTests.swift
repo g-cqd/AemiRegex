@@ -1,3 +1,4 @@
+import AemiKernel
 import Foundation
 import Testing
 
@@ -79,7 +80,7 @@ struct DifferentialTests {
     }
 
     @Test func `ten thousand generated pattern and haystack pairs agree with ICU`() throws {
-        var rng = SplitMix64(state: 0xA3E1_2026)
+        var rng = SplitMix64(seed: 0xA3E1_2026)
         var pools = PatternPools(&rng)
         var compared = 0
         var disagreements: [String] = []
