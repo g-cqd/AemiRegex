@@ -1,9 +1,6 @@
 // swift-tools-version: 6.4
 import PackageDescription
 
-// Same strictness as the AemiJSON family: Swift 6 mode (complete concurrency checking), warnings as errors,
-// and the upcoming features that tighten existentials and imports. No unsafe flags, so the library can be
-// consumed through a version-pinned requirement.
 let strictSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .treatAllWarnings(as: .error),
@@ -13,27 +10,20 @@ let strictSettings: [SwiftSetting] = [
     .enableUpcomingFeature("MemberImportVisibility")
 ]
 
-// The engine reads attacker-controlled bytes, so every unsafe construct in it must be marked `unsafe`.
 let kernelSettings: [SwiftSetting] = strictSettings + [.strictMemorySafety()]
 
-// Aemi supplies the byte kernels, UTF-8 reading, the Unicode tables and the scratch pool (ADR-0013), and the shared `format` / `lint`
-// plugins the shared CI workflow runs. Pinned to one revision, like every Aemi-family package: AemiJSON, AemiMarkdown and TerminalKit pin
-// the same one, since SwiftPM resolves one revision per package in a graph.
 let packageDependencies: [Package.Dependency] = [
     .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "bd5e4cf4441ca3ed1b424935142586ccaac0f835")
 ]
 
 let package = Package(
     name: "AemiRegex",
-    // The floor matches AemiJSON and Aemi (`Synchronization`'s `Mutex`/`Atomic` need these releases).
     platforms: [.macOS(.v15), .iOS(.v18), .tvOS(.v18), .watchOS(.v11), .visionOS(.v2)],
     products: [
         .library(name: "AemiRegex", targets: ["AemiRegex"])
     ],
     dependencies: packageDependencies,
     targets: [
-        // No Foundation: a pattern is parsed, compiled and matched over UTF-8 bytes. The multi-literal kernel, the byte scans and the
-        // Unicode data are Aemi's (ADR-0013).
         .target(
             name: "AemiRegex",
             dependencies: [
@@ -51,8 +41,6 @@ let package = Package(
     ]
 )
 
-// The comparison benchmark (AemiRegex against NSRegularExpression and Swift's Regex) is dev-only, like the siblings' suites:
-//   AEMIREGEX_DEV=1 swift run -c release AemiRegexBench [corpus-directory]
 if Context.environment["AEMIREGEX_DEV"] != nil {
     package.targets.append(
         .executableTarget(
