@@ -13,7 +13,7 @@ let strictSettings: [SwiftSetting] = [
 let kernelSettings: [SwiftSetting] = strictSettings + [.strictMemorySafety()]
 
 let packageDependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "9e38d1bee60d5d65acffef4538c671b49860c6af")
+    .package(url: "https://github.com/Aemi-Studio/aemi.git", revision: "340c49040faa49313d5632003d8224d9d0084fb0")
 ]
 
 let package = Package(
